@@ -146,6 +146,71 @@ hr{border:none;border-top:1px solid var(--border);margin:13px 0;}
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(160deg,#0D0A0A 0%,#1E0808 50%,#0D0A0A 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Sans Arabic',sans-serif;
+">
+  <div style="width:100%;max-width:380px;padding:20px">
+
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:32px">
+      <svg width="56" height="66" viewBox="0 0 42 52" fill="none" style="margin:0 auto 12px;display:block">
+        <path d="M21 2C9 9 3 23 3 35C3 46 11 50 21 50C31 50 39 46 39 35C39 23 33 9 21 2Z" fill="#0A0A0A" stroke="#B91C1C" stroke-width="1.5"/>
+        <path d="M21 5V48" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M21 12C15 18 11 26 10 36" stroke="white" stroke-width="1" stroke-linecap="round"/>
+        <path d="M21 12C27 18 31 26 32 36" stroke="white" stroke-width="1" stroke-linecap="round"/>
+        <path d="M21 22C17 25 14 30 13 36" stroke="white" stroke-width=".7" stroke-linecap="round"/>
+        <path d="M21 22C25 25 28 30 29 36" stroke="white" stroke-width=".7" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:24px;font-weight:800;color:#fff">Temo<span style="color:#DC2626">_plants</span></div>
+      <div style="font-size:11px;color:#6A4040;margin-top:4px;letter-spacing:.5px">نظام إدارة النباتات النادرة</div>
+    </div>
+
+    <!-- Login card -->
+    <div style="background:#1E1414;border:1px solid #2E1A1A;border-radius:16px;padding:28px;box-shadow:0 20px 60px #00000080">
+      <div style="font-size:14px;font-weight:600;color:#F5EDED;margin-bottom:20px;text-align:center">
+        🔒 تسجيل الدخول
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:#6A4040;font-weight:600;display:block;margin-bottom:6px">كلمة المرور</label>
+        <input
+          type="password"
+          id="login-password"
+          placeholder="أدخل كلمة المرور..."
+          dir="ltr"
+          style="width:100%;background:#130E0E;border:1px solid #2E1A1A;border-radius:8px;padding:11px 14px;color:#F5EDED;font-size:14px;outline:none;letter-spacing:2px;transition:border .15s"
+          onkeydown="if(event.key==='Enter')checkLogin()"
+          onfocus="this.style.borderColor='#B91C1C'"
+          onblur="this.style.borderColor='#2E1A1A'"
+        >
+      </div>
+
+      <!-- Error msg -->
+      <div id="login-error" style="display:none;background:#2D0A0A;border:1px solid #4A1010;border-radius:8px;padding:9px 12px;font-size:12px;color:#FCA5A5;margin-bottom:14px;text-align:center">
+        ❌ كلمة المرور غير صحيحة
+      </div>
+
+      <button
+        onclick="checkLogin()"
+        style="width:100%;background:#B91C1C;color:#fff;border:none;border-radius:8px;padding:12px;font-family:'IBM Plex Sans Arabic',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s"
+        onmouseover="this.style.background='#DC2626'"
+        onmouseout="this.style.background='#B91C1C'"
+      >
+        دخول ←
+      </button>
+
+      <div style="text-align:center;margin-top:16px;font-size:10px;color:#4A2020">
+        🌿 Temo_plants — نظام خاص
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 <nav class="sidebar">
   <div class="logo">
@@ -3262,6 +3327,74 @@ function renderReports(){
 
 
 // INIT
+
+// ══════════════════════════════════════
+// PASSWORD PROTECTION
+// ══════════════════════════════════════
+const APP_PASSWORD_HASH = "1eeb267ac8767f6317e4e7b9c542c0be4b38d2f0049dc39c5ee305d6f63caacd"; // Temo@2025
+
+function hashStr(str){
+  // Simple hash using SubtleCrypto
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(str))
+    .then(buf => Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join(""));
+}
+
+window.checkLogin = async function(){
+  const pwd = document.getElementById("login-password").value;
+  if(!pwd) return;
+  const hash = await hashStr(pwd);
+  if(hash === APP_PASSWORD_HASH){
+    // Save session (expires in 7 days)
+    const expiry = Date.now() + 7*24*60*60*1000;
+    localStorage.setItem("temo_session", JSON.stringify({hash, expiry}));
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("login-error").style.display  = "none";
+  } else {
+    document.getElementById("login-error").style.display = "block";
+    document.getElementById("login-password").value = "";
+    document.getElementById("login-password").focus();
+    // Shake animation
+    const input = document.getElementById("login-password");
+    input.style.borderColor = "#EF4444";
+    input.style.animation   = "shake .4s ease";
+    setTimeout(()=>{ input.style.animation=""; input.style.borderColor="#2E1A1A"; }, 500);
+  }
+};
+
+function checkSession(){
+  const raw = localStorage.getItem("temo_session");
+  if(!raw) return false;
+  try {
+    const {hash, expiry} = JSON.parse(raw);
+    if(Date.now() > expiry){ localStorage.removeItem("temo_session"); return false; }
+    if(hash === APP_PASSWORD_HASH) return true;
+  } catch(e){}
+  return false;
+}
+
+// Add logout button to sidebar
+function addLogoutBtn(){
+  const sidebar = document.querySelector(".sidebar");
+  const logoutDiv = document.createElement("div");
+  logoutDiv.style.cssText = "padding:12px 18px;border-top:1px solid var(--border);margin-top:auto;cursor:pointer;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:8px;transition:all .15s";
+  logoutDiv.innerHTML = "🔓 تسجيل الخروج";
+  logoutDiv.onmouseover = ()=> logoutDiv.style.color="var(--red)";
+  logoutDiv.onmouseout  = ()=> logoutDiv.style.color="var(--text3)";
+  logoutDiv.onclick = ()=>{
+    if(confirm("تسجيل الخروج؟")){
+      localStorage.removeItem("temo_session");
+      location.reload();
+    }
+  };
+  sidebar.appendChild(logoutDiv);
+}
+
+// Add shake keyframe
+const shakeStyle = document.createElement("style");
+shakeStyle.textContent = "@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}";
+document.head.appendChild(shakeStyle);
+
+
 loadTheme();
 buildGenus("pg-genus","pgSelectGenus");
 buildGenus("pu-genus","puSelectGenus");
@@ -3271,6 +3404,14 @@ $("p-code").value=GENERA[0].pre+"-001";
 $("pu-code").value=GENERA[0].pre+"-001";
 $("d-date").textContent=new Date().toLocaleDateString("ar-SA",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
 ["e-date","sh-date","sl-date","pu-date","pr-d"].forEach(id=>{const el=$(id);if(el)el.value=today();});
+// Check session on load
+if(checkSession()){
+  document.getElementById("login-screen").style.display = "none";
+} else {
+  // Focus password field
+  setTimeout(()=>{ const el=document.getElementById("login-password"); if(el) el.focus(); }, 100);
+}
+addLogoutBtn();
 initFirebase();
 
 // Wire up export button
