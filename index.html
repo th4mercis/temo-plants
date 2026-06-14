@@ -142,7 +142,161 @@ hr{border:none;border-top:1px solid var(--border);margin:13px 0;}
 .name-row{display:flex;flex-direction:column;gap:6px;}
 .name-or{font-size:10px;color:var(--text3);text-align:center;}
 ::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg2);}::-webkit-scrollbar-thumb{background:var(--scr);border-radius:3px;}
-@media(max-width:900px){.stats{grid-template-columns:1fr 1fr;}.g2,.g3,.fg,.fg3,.fg4{grid-template-columns:1fr;}.sidebar{width:210px;}.main{margin-right:210px;padding:18px;}}
+
+/* ══════════════════════════════════════
+   MOBILE — full responsive
+══════════════════════════════════════ */
+@media(max-width:768px){
+  /* Hide sidebar on mobile */
+  .sidebar{ display:none !important; }
+
+  /* Main takes full width */
+  .main{
+    margin-right:0 !important;
+    padding:16px 14px 90px !important;
+    min-width:0;
+  }
+
+  /* Stats: 2 columns on mobile */
+  .stats{ grid-template-columns:1fr 1fr !important; gap:10px !important; }
+  .sc{ padding:12px !important; }
+  .sc-v{ font-size:18px !important; }
+
+  /* All grids → single column */
+  .g2,.g3{ grid-template-columns:1fr !important; gap:12px !important; }
+  .fg,.fg3,.fg4{ grid-template-columns:1fr !important; gap:10px !important; }
+  .fgrp.full{ grid-column:1 !important; }
+
+  /* Cards */
+  .card{ padding:14px !important; margin-bottom:12px !important; }
+  .ct{ font-size:13px !important; flex-wrap:wrap; gap:6px !important; }
+
+  /* Tables — horizontal scroll */
+  table{ font-size:11px !important; }
+  th,td{ padding:7px 6px !important; }
+  .card > table,
+  .card > div > table{
+    display:block;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    white-space:nowrap;
+  }
+
+  /* Page title */
+  .ph-t{ font-size:18px !important; }
+
+  /* Buttons */
+  .btn{ font-size:12px !important; padding:7px 12px !important; }
+  .btn-row{ flex-wrap:wrap !important; gap:8px !important; }
+
+  /* Genus buttons */
+  .gbtns{ gap:5px !important; }
+  .gb{ font-size:11px !important; padding:4px 10px !important; }
+
+  /* Modals */
+  .modal{ max-width:100% !important; max-height:92vh !important; margin:0 8px !important; }
+  .mhead{ padding:12px 16px !important; }
+  .mbody{ padding:14px 16px !important; }
+  .moverlay{ padding:10px !important; align-items:flex-end !important; }
+  .modal{ border-radius:16px 16px 0 0 !important; }
+
+  /* Invoice content */
+  #inv-content, #mi-inv-content{
+    padding:20px !important;
+    font-size:12px !important;
+  }
+
+  /* Variant pills */
+  .vpills{ gap:3px !important; }
+  .vp{ font-size:10px !important; padding:2px 6px 2px 4px !important; }
+
+  /* Login screen */
+  #login-screen > div{ padding:16px !important; }
+  #login-screen .logo-box{ margin-bottom:20px !important; }
+
+  /* Page header */
+  .ph{ margin-bottom:14px !important; }
+  .bbar{ margin-bottom:14px !important; }
+
+  /* Prev box */
+  .prev{ padding:10px 12px !important; }
+  .prev-r{ font-size:11px !important; }
+
+  /* Summary rows */
+  .sr{ font-size:11.5px !important; }
+
+  /* Code chips */
+  .code{ font-size:9.5px !important; }
+
+  /* Tags */
+  .tag{ font-size:9.5px !important; padding:1px 6px !important; }
+
+  /* Name row in forms */
+  .name-row{ gap:5px !important; }
+
+  /* Multi-invoice selector */
+  #mi-sales-list{ max-height:280px !important; }
+
+  /* Order cards */
+  #ord-list .card{ margin-bottom:10px !important; }
+}
+
+/* MOBILE BOTTOM NAV */
+#mobile-nav{
+  display:none;
+  position:fixed;
+  bottom:0;left:0;right:0;
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  z-index:200;
+  padding:0;
+  box-shadow:0 -4px 20px #00000050;
+}
+#mobile-nav .mn-items{
+  display:flex;
+  align-items:stretch;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+#mobile-nav .mn-items::-webkit-scrollbar{ display:none; }
+.mn-item{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8px 6px 10px;min-width:58px;cursor:pointer;
+  font-size:9.5px;color:var(--text3);gap:3px;
+  border-top:2px solid transparent;transition:all .15s;
+  flex-shrink:0;
+}
+.mn-item .mn-icon{ font-size:18px;line-height:1; }
+.mn-item.active{ color:var(--rhi);border-top-color:var(--br); }
+.mn-item:active{ background:var(--bg3); }
+.mn-badge{
+  position:absolute;top:5px;
+  background:var(--br);color:#fff;
+  font-size:9px;font-weight:700;
+  padding:1px 4px;border-radius:10px;
+  min-width:16px;text-align:center;
+  font-family:'DM Mono',monospace;
+}
+.mn-item{ position:relative; }
+
+/* Mobile sync bar */
+#mobile-sync{
+  display:none;
+  position:fixed;top:0;left:0;right:0;
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  z-index:150;padding:8px 14px;
+  font-size:11px;color:var(--text3);
+  align-items:center;gap:7px;
+}
+
+@media(max-width:768px){
+  #mobile-nav{ display:block; }
+  #mobile-sync{ display:flex; }
+  .main{ padding-top:44px !important; }
+  .notif{ bottom:80px !important; left:12px !important; right:12px !important; max-width:none !important; }
+}
+
 </style>
 </head>
 <body>
@@ -210,6 +364,59 @@ hr{border:none;border-top:1px solid var(--border);margin:13px 0;}
     </div>
   </div>
 </div>
+
+
+<!-- MOBILE TOP BAR -->
+<div id="mobile-sync" style="display:none;position:fixed;top:0;left:0;right:0;background:var(--bg2);border-bottom:1px solid var(--border);z-index:150;padding:8px 14px;font-size:11px;color:var(--text3);align-items:center;gap:7px;">
+  <div class="sync-dot loading" id="msync-dot" style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--gold);animation:pulse 1s infinite;"></div>
+  <span id="msync-txt">جاري الاتصال...</span>
+  <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
+    <span style="font-weight:700;color:var(--text)">Temo<span style="color:#DC2626">_plants</span></span>
+    <button onclick="mobileThemeToggle()" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px" id="m-theme-btn">🌙</button>
+  </div>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+<div id="mobile-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);z-index:200;box-shadow:0 -4px 20px #00000050;">
+  <div style="display:flex;align-items:stretch;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+    <div class="mn-item active" onclick="mobileNav(this,'dashboard')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:var(--text3);gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">📊</span>الرئيسية
+    </div>
+    <div class="mn-item" onclick="mobileNav(this,'plants')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:var(--text3);gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">🪴</span>النباتات
+      <span id="mnb-p" style="display:none;position:absolute;top:5px;right:8px;background:#B91C1C;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:10px;min-width:16px;text-align:center">0</span>
+    </div>
+    <div class="mn-item" onclick="mobileNav(this,'purchases')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:var(--text3);gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">🛒</span>مشتريات
+    </div>
+    <div class="mn-item" onclick="mobileNav(this,'sales')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:var(--text3);gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">💰</span>المبيعات
+      <span id="mnb-sl" style="display:none;position:absolute;top:5px;right:8px;background:#B91C1C;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:10px;min-width:16px;text-align:center">0</span>
+    </div>
+    <div class="mn-item" onclick="mobileNav(this,'orders')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:var(--text3);gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">📋</span>الطلبات
+      <span id="mnb-ord" style="display:none;position:absolute;top:5px;right:8px;background:#B91C1C;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:10px;min-width:16px;text-align:center">0</span>
+    </div>
+    <div class="mn-item" onclick="mobileNav(this,'expenses')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:var(--text3);gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">💸</span>مصروفات
+    </div>
+    <div class="mn-item" onclick="mobileNav(this,'supplies')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:var(--text3);gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">🧪</span>مستلزمات
+    </div>
+    <div class="mn-item" onclick="mobileNav(this,'reports')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:var(--text3);gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">📈</span>تقارير
+    </div>
+    <div class="mn-item" onclick="mobileNav(this,'multi-invoice')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:var(--text3);gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">🧾</span>فاتورة
+    </div>
+    <div class="mn-item" onclick="mobileLogout()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 10px;min-width:58px;cursor:pointer;font-size:9.5px;color:#EF4444;gap:3px;border-top:2px solid transparent;flex-shrink:0;position:relative;">
+      <span style="font-size:18px">🔓</span>خروج
+    </div>
+  </div>
+</div>
+<style>
+.mn-item.active { color: #DC2626 !important; border-top-color: #B91C1C !important; }
+</style>
 
 <div class="app">
 <nav class="sidebar">
@@ -3410,6 +3617,89 @@ $("p-code").value=GENERA[0].pre+"-001";
 $("pu-code").value=GENERA[0].pre+"-001";
 $("d-date").textContent=new Date().toLocaleDateString("ar-SA",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
 ["e-date","sh-date","sl-date","pu-date","pr-d"].forEach(id=>{const el=$(id);if(el)el.value=today();});
+
+// ══════════════════════════════════════
+// MOBILE NAVIGATION
+// ══════════════════════════════════════
+function isMobile(){ return window.innerWidth <= 768; }
+
+window.mobileNav = function(el, page){
+  if(!isMobile()) return;
+  document.querySelectorAll(".mn-item").forEach(n=>n.classList.remove("active"));
+  el.classList.add("active");
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  const pageEl = document.getElementById("page-"+page);
+  if(pageEl) pageEl.classList.add("active");
+  const rs={dashboard:renderDash,plants:renderPlants,supplies:renderSupplies,
+    purchases:renderPurchasesPage,sales:renderSalesPage,
+    expenses:renderExpenses,shipments:renderShipments,
+    reports:renderReports,orders:renderOrders,
+    "multi-invoice":renderMultiInvoicePage};
+  if(rs[page]) rs[page]();
+  // Scroll to top
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+
+window.mobileThemeToggle = function(){
+  toggleTheme();
+  const btn = document.getElementById("m-theme-btn");
+  if(btn) btn.textContent = document.documentElement.getAttribute("data-theme")==="dark"?"🌙":"☀️";
+};
+
+window.mobileLogout = function(){
+  if(confirm("تسجيل الخروج؟")){
+    localStorage.removeItem("temo_session");
+    location.reload();
+  }
+};
+
+// Sync mobile badges with desktop
+function updMobileBadges(){
+  const p  = S.plants.length;
+  const sl = S.sales.length;
+  const ord = (S.orders||[]).filter(o=>o.status==="pending"||o.status==="ready").length;
+  const mnbP = document.getElementById("mnb-p");
+  const mnbSl= document.getElementById("mnb-sl");
+  const mnbOrd=document.getElementById("mnb-ord");
+  if(mnbP){  mnbP.textContent=p;   mnbP.style.display=p>0?"block":"none"; }
+  if(mnbSl){ mnbSl.textContent=sl; mnbSl.style.display=sl>0?"block":"none"; }
+  if(mnbOrd){mnbOrd.textContent=ord;mnbOrd.style.display=ord>0?"block":"none";}
+}
+
+// Sync mobile sync bar with desktop sync bar
+function updMobileSync(status, msg){
+  const dot = document.getElementById("msync-dot");
+  const txt = document.getElementById("msync-txt");
+  if(dot){ dot.className="sync-dot "+status; }
+  if(txt) txt.textContent = msg;
+}
+
+// Override setSyncStatus to also update mobile
+const _setSyncStatus = setSyncStatus;
+setSyncStatus = function(status, msg){
+  _setSyncStatus(status, msg);
+  updMobileSync(status, msg);
+};
+
+// Override updBadges to also update mobile
+const _updBadges = updBadges;
+updBadges = function(){
+  _updBadges();
+  updMobileBadges();
+};
+
+// Handle resize
+window.addEventListener("resize", function(){
+  if(isMobile()){
+    document.getElementById("mobile-nav").style.display="block";
+    document.getElementById("mobile-sync").style.display="flex";
+  } else {
+    document.getElementById("mobile-nav").style.display="none";
+    document.getElementById("mobile-sync").style.display="none";
+  }
+});
+
+
 // Check session on load
 if(checkSession()){
   document.getElementById("login-screen").style.display = "none";
@@ -3456,6 +3746,25 @@ document.getElementById("import-file").addEventListener("change", function(ev){
   };
   reader.readAsText(file,"utf-8");
 });
+
+
+// Auto show mobile elements
+(function initMobileUI(){
+  function applyMobile(){
+    var isMob = window.innerWidth <= 768;
+    var nav  = document.getElementById('mobile-nav');
+    var sync = document.getElementById('mobile-sync');
+    if(nav)  nav.style.display  = isMob ? 'block' : 'none';
+    if(sync) sync.style.display = isMob ? 'flex'  : 'none';
+    var btn = document.getElementById('m-theme-btn');
+    var theme = document.documentElement.getAttribute('data-theme');
+    if(btn) btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+  }
+  window.addEventListener('resize', applyMobile);
+  document.addEventListener('DOMContentLoaded', applyMobile);
+  setTimeout(applyMobile, 200);
+  setTimeout(applyMobile, 1000);
+})();
 
 </script>
 </body>
