@@ -1544,13 +1544,19 @@ async function initFirebase(){
         S.purchases = d.purchases || [];
         S.orders    = d.orders    || [];
         updBadges();
+
+        // Always refresh dropdowns after data loads
+        fillSalesDrop();
+        fillPuEx();
+
         // refresh current page
         const active=document.querySelector(".page.active");
         if(active){
           const pid=active.id.replace("page-","");
           const rs={dashboard:renderDash,plants:renderPlants,supplies:renderSupplies,
             sales:renderSalesPage,expenses:renderExpenses,shipments:renderShipments,
-            reports:renderReports,purchases:renderPurchasesPage};
+            reports:renderReports,purchases:renderPurchasesPage,
+            orders:renderOrders,"multi-invoice":renderMultiInvoicePage};
           if(rs[pid]) rs[pid]();
         }
         setSyncStatus("ok","متزامن مع الكلاود 🔥");
