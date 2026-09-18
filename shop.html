@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Temo_plants 🌿</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:#0D0A0A;color:#F5EDED;min-height:100vh;direction:rtl;}
+
+/* ── HEADER ── */
+.hdr{
+  background:#130E0E;
+  border-bottom:1px solid #2E1A1A;
+  padding:12px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-logo{
+  width:44px;height:44px;border-radius:10px;
+  overflow:hidden;flex-shrink:0;
+  background:#0A0A0A;
+  display:flex;align-items:center;justify-content:center;
+}
+.brand-logo img{width:100%;height:100%;object-fit:contain;}
+.brand-name{font-size:19px;font-weight:800;color:#fff;}
+.brand-name span{color:#DC2626;}
+.ig-btn{
+  display:flex;align-items:center;gap:7px;
+  padding:9px 16px;border-radius:25px;
+  background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);
+  color:#fff;font-size:13px;font-weight:700;
+  text-decoration:none;white-space:nowrap;
+  transition:opacity .15s;
+}
+.ig-btn:hover{opacity:.88;}
+.ig-btn svg{flex-shrink:0;}
+
+/* ── HERO ── */
+.hero{
+  text-align:center;
+  padding:40px 20px 30px;
+  border-bottom:1px solid #1E1414;
+}
+.hero h1{font-size:26px;font-weight:800;color:#fff;margin-bottom:6px;}
+.hero h1 span{color:#DC2626;}
+.hero p{font-size:13px;color:#7A5050;max-width:380px;margin:0 auto 22px;}
+.stats{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.stat{
+  background:#1A1010;border:1px solid #2E1A1A;
+  border-radius:10px;padding:10px 22px;text-align:center;
+}
+.stat-n{font-size:22px;font-weight:800;color:#DC2626;}
+.stat-l{font-size:10px;color:#6A4040;margin-top:2px;}
+
+/* ── FILTERS ── */
+.filters{
+  display:flex;gap:8px;padding:16px 16px 8px;
+  flex-wrap:wrap;align-items:center;
+  max-width:1000px;margin:0 auto;
+}
+.ftag{
+  padding:6px 14px;border-radius:20px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  border:1px solid #2E1A1A;background:#1A1010;
+  color:#7A5050;transition:all .12s;
+  font-family:'IBM Plex Sans Arabic',sans-serif;
+}
+.ftag.on,.ftag:hover{background:#2D0A0A;color:#FCA5A5;border-color:#B91C1C;}
+.fsearch{
+  margin-right:auto;
+  background:#1A1010;border:1px solid #2E1A1A;
+  border-radius:20px;padding:7px 14px;
+  display:flex;align-items:center;gap:6px;
+}
+.fsearch input{
+  background:none;border:none;outline:none;
+  color:#F5EDED;font-family:'IBM Plex Sans Arabic',sans-serif;
+  font-size:13px;width:140px;
+}
+.fsearch input::placeholder{color:#4A2020;}
+
+/* ── GRID ── */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:14px;padding:14px 16px 60px;
+  max-width:1000px;margin:0 auto;
+}
+
+/* ── CARD ── */
+.card{
+  background:#1A1010;border:1px solid #2E1A1A;
+  border-radius:14px;overflow:hidden;
+  display:flex;flex-direction:column;
+  transition:border-color .15s,transform .15s;
+  cursor:pointer;
+}
+.card:hover{border-color:#B91C1C;transform:translateY(-2px);}
+.card-img{
+  aspect-ratio:1;overflow:hidden;position:relative;
+  background:#130E0E;
+}
+.card-img img{width:100%;height:100%;object-fit:cover;}
+.card-nophoto{
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:56px;
+}
+.card-genus{
+  position:absolute;bottom:7px;right:7px;
+  background:#0A0A0Aaa;backdrop-filter:blur(4px);
+  color:#FCA5A5;font-size:10px;font-weight:700;
+  padding:3px 8px;border-radius:8px;
+  border:1px solid #3E1A1A;
+}
+.card-body{padding:12px;flex:1;}
+.card-code{font-size:9.5px;color:#4A2020;margin-bottom:3px;font-family:monospace;}
+.card-name{font-size:13px;font-weight:700;color:#F5EDED;line-height:1.3;margin-bottom:8px;}
+.card-types{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;}
+.ctype{
+  font-size:10.5px;padding:2px 8px;border-radius:6px;
+  background:#130E0E;border:1px solid #2E1A1A;color:#8A6060;
+}
+.card-price{font-size:17px;font-weight:800;color:#DC2626;}
+.card-price small{font-size:11px;color:#5A3030;font-weight:400;}
+.card-price.noprice{font-size:12px;color:#5A3030;}
+.card-foot{
+  padding:10px 12px;border-top:1px solid #1E1414;
+}
+.ig-card-btn{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px;border-radius:8px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);
+  color:#fff;font-size:12.5px;font-weight:700;
+  font-family:'IBM Plex Sans Arabic',sans-serif;
+  text-decoration:none;transition:opacity .15s;
+}
+.ig-card-btn:hover{opacity:.87;}
+
+/* ── MODAL ── */
+.overlay{
+  position:fixed;inset:0;background:#000000bb;
+  z-index:200;display:flex;align-items:center;
+  justify-content:center;padding:16px;
+}
+.modal{
+  background:#1A1010;border:1px solid #4A2020;
+  border-radius:16px;width:100%;max-width:420px;
+  max-height:90vh;overflow-y:auto;
+  animation:pop .18s ease;
+}
+@keyframes pop{from{transform:scale(.95);opacity:0}to{transform:none;opacity:1}}
+.modal-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px 12px 0 0;}
+.modal-nophoto{
+  width:100%;aspect-ratio:1.6;
+  background:#130E0E;
+  display:flex;align-items:center;justify-content:center;
+  font-size:80px;border-radius:12px 12px 0 0;
+}
+.modal-body{padding:18px;}
+.modal-code{font-size:10px;color:#4A2020;font-family:monospace;margin-bottom:4px;}
+.modal-name{font-size:20px;font-weight:800;color:#F5EDED;margin-bottom:14px;}
+.modal-row{
+  display:flex;justify-content:space-between;align-items:center;
+  background:#130E0E;border:1px solid #2E1A1A;border-radius:8px;
+  padding:10px 12px;margin-bottom:8px;
+}
+.modal-type{font-size:13px;font-weight:600;color:#F5EDED;}
+.modal-avail{font-size:11px;color:#86EFAC;}
+.modal-price{font-size:16px;font-weight:800;color:#DC2626;}
+.modal-note{font-size:12px;color:#5A3030;margin:10px 0;padding:8px 10px;background:#130E0E;border-radius:7px;}
+.modal-src{font-size:11px;color:#4A2020;margin-bottom:14px;}
+.modal-close{
+  position:absolute;top:10px;left:10px;
+  background:#0A0A0Acc;color:#F5EDED;
+  border:none;border-radius:50%;width:30px;height:30px;
+  font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ── EMPTY / LOADING ── */
+.empty,.loading{
+  text-align:center;padding:60px 20px;
+  color:#4A2020;grid-column:1/-1;font-size:13px;
+}
+.spinner{
+  width:36px;height:36px;border-radius:50%;
+  border:3px solid #2E1A1A;border-top-color:#DC2626;
+  margin:0 auto 14px;animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── FOOTER ── */
+.footer{
+  text-align:center;padding:20px;
+  border-top:1px solid #1E1414;
+  font-size:11px;color:#4A2020;
+}
+.footer a{color:#DC2626;text-decoration:none;}
+
+/* ── MOBILE ── */
+@media(max-width:560px){
+  .grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:10px 10px 60px;}
+  .hero h1{font-size:21px;}
+  .card-name{font-size:12px;}
+  .card-price{font-size:15px;}
+  .hdr{padding:10px 14px;}
+  .brand-name{font-size:16px;}
+  .ig-btn{padding:7px 12px;font-size:12px;}
+  .filters{padding:12px 10px 6px;gap:6px;}
+  .fsearch input{width:100px;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="brand">
+    <div class="brand-logo">
+      <img src="https://raw.githubusercontent.com/th4mercis/temo-plants/main/logo.png"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+           alt="logo">
+      <svg style="display:none;width:36px;height:36px" viewBox="0 0 60 70" fill="none">
+        <rect width="60" height="70" rx="8" fill="#0A0A0A"/>
+        <path d="M20 12C20 12 15 22 15 35C15 47 22 55 30 57C38 55 45 47 45 35C45 22 40 12 40 12" fill="#0A0A0A" stroke="#B91C1C" stroke-width="1.5"/>
+        <path d="M30 10 L30 58" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M30 18 C24 24 20 32 19 42" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+        <path d="M30 18 C36 24 40 32 41 42" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+        <path d="M30 30 C26 34 23 40 22 46" stroke="white" stroke-width=".8" stroke-linecap="round"/>
+        <path d="M30 30 C34 34 37 40 38 46" stroke="white" stroke-width=".8" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">Temo<span>_plants</span></div>
+    </div>
+  </div>
+  <a class="ig-btn" href="https://ig.me/m/Temo_plants" target="_blank">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+    راسلنا
+  </a>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>نباتات <span>نادرة</span> 🌿</h1>
+  <p>كورمات وشتلات مميزة — تايلاند، الصين، إندونيسيا وأوروبا</p>
+  <div class="stats">
+    <div class="stat"><div class="stat-n" id="s-count">—</div><div class="stat-l">نبتة متوفرة</div></div>
+    <div class="stat"><div class="stat-n" id="s-gen">—</div><div class="stat-l">جنس نباتي</div></div>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <button class="ftag on" onclick="setF(this,'all')">🌿 الكل</button>
+  <div id="genus-btns"></div>
+  <div class="fsearch">
+    <span style="color:#4A2020;font-size:13px">🔍</span>
+    <input id="q" placeholder="ابحث..." oninput="render()">
+  </div>
+</div>
+
+<!-- GRID -->
+<div class="grid" id="grid">
+  <div class="loading"><div class="spinner"></div>جاري التحميل...</div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <a href="https://instagram.com/Temo_plants" target="_blank">📸 @Temo_plants</a>
+  &nbsp;•&nbsp; نباتات تُشحن بعناية 📦
+</footer>
+
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyA5V7-gQw-q9Y0G_Jk4acXV_ab-uwa1JMA",
+  authDomain:"temo-plants.firebaseapp.com",
+  projectId:"temo-plants",
+  storageBucket:"temo-plants.firebasestorage.app",
+  messagingSenderId:"391694634990",
+  appId:"1:391694634990:web:10c2c9dc75fbfc6a7088ff"
+});
+
+const db  = getFirestore(app);
+const IG  = "Temo_plants";
+let all   = [];
+let filt  = "all";
+
+onSnapshot(doc(db,"temo","main"), snap => {
+  if(!snap.exists()){ grid("لا توجد بيانات"); return; }
+  all = (snap.data().plants||[]).filter(p =>
+    p.variants && p.variants.some(v => v.sell==="forsale" && v.qty>0)
+  );
+  buildGenus();
+  render();
+  // stats
+  document.getElementById("s-count").textContent = all.length;
+  document.getElementById("s-gen").textContent   = new Set(all.map(p=>p.genus)).size;
+});
+
+function buildGenus(){
+  const genera = [...new Set(all.map(p=>p.genus))];
+  document.getElementById("genus-btns").innerHTML = genera.map(g=>{
+    const icon = all.find(p=>p.genus===g)?.icon||"🪴";
+    return `<button class="ftag" onclick="setF(this,'${g}')">${icon} ${g}</button>`;
+  }).join("");
+}
+
+window.setF = function(el,g){
+  document.querySelectorAll(".ftag").forEach(b=>b.classList.remove("on"));
+  el.classList.add("on"); filt=g; render();
+};
+
+window.render = function(){
+  const q   = document.getElementById("q").value.trim().toLowerCase();
+  let list  = filt==="all" ? all : all.filter(p=>p.genus===filt);
+  if(q) list = list.filter(p=>p.name.toLowerCase().includes(q));
+  const el  = document.getElementById("grid");
+  if(!list.length){ el.innerHTML='<div class="empty">لا توجد نباتات في هذه الفئة 🔍</div>'; return; }
+
+  el.innerHTML = list.map(p=>{
+    const sv    = p.variants.filter(v=>v.sell==="forsale"&&v.qty>0);
+    const prices= sv.map(v=>v.price||0).filter(x=>x>0);
+    const minP  = prices.length ? Math.min(...prices) : 0;
+    const imgEl = p.img
+      ? `<img src="${p.img}" alt="${p.name}" loading="lazy">`
+      : `<div class="card-nophoto">${p.icon||"🪴"}</div>`;
+    const types = sv.map(v=>`<span class="ctype">${v.type}</span>`).join("");
+    const priceEl = minP>0
+      ? `<div class="card-price">${minP.toLocaleString("ar-SA")} <small>ر.س</small></div>`
+      : `<div class="card-price noprice">تواصل للسعر</div>`;
+
+    return `
+    <div class="card" onclick="openModal(${p.id})">
+      <div class="card-img">
+        ${imgEl}
+        <span class="card-genus">${p.icon||"🪴"} ${p.genus}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-code">${p.code}</div>
+        <div class="card-name">${p.name}</div>
+        <div class="card-types">${types}</div>
+        ${priceEl}
+      </div>
+      <div class="card-foot">
+        <a class="ig-card-btn"
+           href="https://ig.me/m/${IG}"
+           target="_blank"
+           onclick="event.stopPropagation()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          راسلنا على إنستجرام
+        </a>
+      </div>
+    </div>`;
+  }).join("");
+};
+
+window.openModal = function(id){
+  const p  = all.find(x=>x.id===id); if(!p) return;
+  const sv = p.variants.filter(v=>v.sell==="forsale"&&v.qty>0);
+  const ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.onclick = e=>{ if(e.target===ov) ov.remove(); };
+
+  const imgEl = p.img
+    ? `<img class="modal-img" src="${p.img}" alt="${p.name}">`
+    : `<div class="modal-nophoto">${p.icon||"🪴"}</div>`;
+
+  const rows = sv.map(v=>`
+    <div class="modal-row">
+      <div>
+        <div class="modal-type">${v.type}</div>
+        <div class="modal-avail">✅ متوفر</div>
+      </div>
+      ${v.price>0
+        ? `<div class="modal-price">${v.price.toLocaleString("ar-SA")} ر.س</div>`
+        : `<div style="font-size:12px;color:#5A3030">تواصل للسعر</div>`}
+    </div>`).join("");
+
+  ov.innerHTML = `
+    <div class="modal" style="position:relative">
+      <button class="modal-close" onclick="this.closest('.overlay').remove()">✕</button>
+      ${imgEl}
+      <div class="modal-body">
+        <div class="modal-code">${p.code} • ${p.icon||""} ${p.genus}</div>
+        <div class="modal-name">${p.name}</div>
+        ${rows}
+        ${p.notes?`<div class="modal-note">📝 ${p.notes}</div>`:""}
+        ${p.src?`<div class="modal-src">المصدر: ${p.src}</div>`:""}
+        <a class="ig-card-btn" href="https://ig.me/m/${IG}" target="_blank">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          راسلنا على إنستجرام
+        </a>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+};
+
+function grid(msg){
+  document.getElementById("grid").innerHTML = `<div class="empty">${msg}</div>`;
+}
+</script>
+</body>
+</html>
