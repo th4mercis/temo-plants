@@ -1,6 +1,28 @@
 import * as D from './domain.js';
 import * as store from './store.js';
 const now=()=>new Date().toISOString();
+// One transaction for the plant, stock, purchase and payment: retries cannot duplicate them.
+export async function receivePlant(input,receipt,op=D.id()){
+  D.validateProduct(input);D.quantity(receipt.qty);D.integerMoney(receipt.unitCost);D.integerMoney(receipt.landed||0);D.dateValue(receipt.date);
+  D.assert(['purchase','opening','production'].includes(receipt.kind),'نوع الإضافة غير صالح.');
+  const path='products/'+input.id;
+  return store.atomic([path,'audit/'+op],docs=>{
+    if(docs['audit/'+op])return {result:input.id};
+    const old=docs[path];let p;
+    if(receipt.kind==='production'){
+      D.assert(old&&!old.archived,'النبتة غير موجودة.');D.assert(old.revision===input.revision,'تغيرت النبتة. أعد فتح إضافة الإنتاج.');p=structuredClone(old);
+      let v=p.variants.find(v=>v.id===receipt.variantId);
+      if(!v){D.assert(receipt.type?.trim(),'اسم الصنف مطلوب.');D.assert(!p.variants.some(v=>v.type.trim()===receipt.type.trim()),'الصنف موجود؛ اختره من القائمة.');v={id:receipt.variantId,type:receipt.type.trim(),qty:0,reserved:0,cost:0,price:0,sell:false};p.variants.push(v);}
+      D.integerMoney(receipt.price);v.price=receipt.price;v.sell=!!receipt.sell;
+    }else{D.assert(!old,'هذه النبتة موجودة بالفعل.');D.assert(input.variants.every(v=>v.qty===0&&v.reserved===0),'النبتة الجديدة تبدأ بصفر قبل تسجيل الاستلام.');p=structuredClone(input);}
+    const received=D.receiveStock(p,receipt.variantId,receipt.qty,receipt.unitCost,receipt.landed||0);p=received.product;
+    const amount=received.total;D.integerMoney(amount);
+    const writes={...productWrites([p]),['audit/'+op]:audit(op,receipt.kind,p.id),['movements/'+op]:{id:op,productId:p.id,variantId:receipt.variantId,kind:receipt.kind,qty:receipt.qty,reason:receipt.reason||'إضافة من بطاقة النبتة',date:receipt.date,by:store.uid(),at:now()}};
+    if(receipt.kind==='purchase')writes['purchases/'+op]={id:op,productId:p.id,variantId:receipt.variantId,qty:receipt.qty,unitCost:receipt.unitCost,landed:receipt.landed||0,total:amount,supplier:receipt.reason||'',date:receipt.date};
+    if(receipt.kind!=='opening'&&amount>0)writes['cash/'+op]={id:op,direction:'out',category:receipt.kind,amount,date:receipt.date,reference:op};
+    return {writes,result:p.id};
+  });
+}
 function audit(op,kind,details){return {id:op,kind,details,by:store.uid(),at:now()};}
 function bump(p){p.revision=(p.revision||0)+1;p.updatedAt=now();return p;}
 function productWrites(ps){const w={};for(const p of ps){bump(p);w['products/'+p.id]=p;w['publicProducts/'+p.id]=D.publicProduct(p);}return w;}
