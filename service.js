@@ -14,7 +14,7 @@ export async function receivePlant(input,receipt,op=D.id()){
       D.assert(old&&!old.archived,'النبتة غير موجودة.');D.assert(old.revision===input.revision,'تغيرت النبتة. أعد فتح إضافة الإنتاج.');p=structuredClone(old);
       let v=p.variants.find(v=>v.id===receipt.variantId)||p.variants.find(v=>!D.variantHidden(v)&&v.type.trim().toLowerCase()===String(receipt.type||'').trim().toLowerCase())||p.variants.find(v=>v.type.trim().toLowerCase()===String(receipt.type||'').trim().toLowerCase());if(v)receipt={...receipt,variantId:v.id};
       if(!v){D.assert(receipt.type?.trim(),'اسم الصنف مطلوب.');D.assert(!p.variants.some(v=>v.type.trim()===receipt.type.trim()),'الصنف موجود؛ اختره من القائمة.');v={id:receipt.variantId,type:receipt.type.trim(),qty:0,reserved:0,cost:0,price:0,sell:false};p.variants.push(v);}
-      D.integerMoney(receipt.price);v.price=receipt.price;v.sell=!!receipt.sell;v.hidden=false;
+      D.integerMoney(receipt.price);v.price=receipt.price;v.sell=!!receipt.sell;v.hidden=false;if(v.sell)p.published=true;
     }else{D.assert(!old,'هذه النبتة موجودة بالفعل.');D.assert(input.variants.every(v=>v.qty===0&&v.reserved===0),'النبتة الجديدة تبدأ بصفر قبل تسجيل الاستلام.');p=structuredClone(input);}
     const received=D.receiveStock(p,receipt.variantId,receipt.qty,receipt.unitCost,receipt.landed||0);p=received.product;
     const amount=received.total;D.integerMoney(amount);
