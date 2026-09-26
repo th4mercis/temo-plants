@@ -11,7 +11,7 @@ export async function connect(){
   if(!LIVE_ENABLED)throw new Error('النسخة الحية لم تُفعّل بعد. استخدم المعاينة التجريبية أو اتبع دليل تفعيل Firebase.');
   const base='https://www.gstatic.com/firebasejs/12.19.0/';
   const [app,f,a,s]=await Promise.all(['firebase-app.js','firebase-firestore.js','firebase-auth.js','firebase-storage.js'].map(x=>import(base+x)));
-  sdk={...f,...a,...s};const instance=app.getApps().find(a=>a.name==='backup-only')||app.initializeApp(firebaseConfig,'backup-only');db=f.getFirestore(instance);auth=a.getAuth(instance);storage=s.getStorage(instance);s.setMaxUploadRetryTime(storage,20000);s.setMaxOperationRetryTime(storage,20000);await a.setPersistence(auth,a.browserSessionPersistence);
+  sdk={...f,...a,...s};const instance=app.getApps().find(a=>a.name==='backup-only')||app.initializeApp(firebaseConfig,'backup-only');db=f.getFirestore(instance);auth=a.getAuth(instance);storage=s.getStorage(instance);storage.maxUploadRetryTime=20000;storage.maxOperationRetryTime=20000;await a.setPersistence(auth,a.browserSessionPersistence);
 }
 export async function login(email,password){if(demo)return user;const r=await sdk.signInWithEmailAndPassword(auth,email,password);user=r.user;await checkAdmin();return user;}
 export async function checkAdmin(){if(demo)return true;const s=await sdk.getDoc(sdk.doc(db,'admins',auth.currentUser.uid));if(!s.exists()||s.data().active!==true){await sdk.signOut(auth);throw new Error('هذا الحساب غير مخوّل للإدارة. راجع خطوة إضافة UID في الدليل.');}user=auth.currentUser;return true;}
