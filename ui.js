@@ -1,7 +1,7 @@
 import {formatMoney} from './domain.js';
 export const $=id=>document.getElementById(id);
 export function el(tag,attrs={},...children){const n=document.createElement(tag);for(const [k,v]of Object.entries(attrs)){if(v===null||v===undefined)continue;if(k==='class')n.className=v;else if(k.startsWith('on'))n.addEventListener(k.slice(2).toLowerCase(),v);else if(k==='text')n.textContent=v;else if(k==='value')n.value=v;else if(k==='checked')n.checked=!!v;else if(k==='disabled')n.disabled=!!v;else n.setAttribute(k,String(v));}children.flat(Infinity).filter(x=>x!==null&&x!==undefined).forEach(c=>n.append(c instanceof Node?c:document.createTextNode(String(c))));return n;}
-export function btn(text,fn,cls='button'){return el('button',{type:'button',class:cls,onClick:fn},text);}
+export function btn(text,fn,cls='button'){return el('button',{type:'button',class:cls,onClick:async event=>{try{await fn(event);}catch(e){notice(errorText(e),true);}}},text);}
 export function field(label,name,type='text',value='',attrs={}){const i=el(type==='textarea'?'textarea':'input',{id:'f-'+name,name,type:type==='textarea'?null:type,value,...attrs});if(type==='textarea')i.value=value;return el('label',{class:'field',for:'f-'+name},el('span',{},label),i);}
 export function select(label,name,options,value=''){return el('label',{class:'field',for:'f-'+name},el('span',{},label),el('select',{id:'f-'+name,name,'aria-label':label},options.map(([v,t])=>el('option',{value:v,...(v===value?{selected:''}:{})},t))));}
 export function check(label,name,value=false){return el('label',{class:'check'},el('input',{name,type:'checkbox',checked:value}),label);}
@@ -13,3 +13,4 @@ export function setupDialog(){const d=$('dialog');d.addEventListener('cancel',e=
 export function table(headers,rows){return el('div',{class:'table-wrap',tabindex:'0','aria-label':'جدول قابل للتمرير'},el('table',{},el('thead',{},el('tr',{},headers.map(h=>el('th',{scope:'col'},h)))),el('tbody',{},rows.length?rows.map(row=>el('tr',{},row.map(c=>el('td',{},c)))):el('tr',{},el('td',{colspan:headers.length,class:'empty'},'لا توجد سجلات بعد.')))));}
 export const moneyNode=n=>el('span',{class:'money'},formatMoney(n));
 export function download(name,data){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=el('a',{href:url,download:name});a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+
