@@ -1,7 +1,7 @@
 import {firebaseConfig,LIVE_ENABLED} from './config.js';
 import {id} from './domain.js';
 export const demo=new URLSearchParams(location.search).get('demo')==='1';
-export const collections=['products','orders','purchases','expenses','cash','movements','supplies','shipments','audit','legacy'];
+export const collections=['customers','products','orders','purchases','expenses','cash','movements','supplies','shipments','audit','legacy'];
 const prefix='tp2_',demoKey='temo-v2-demo-only';
 let sdk,db,auth,storage,listeners=[],user=null;
 function readDemo(){try{return JSON.parse(localStorage.getItem(demoKey))||{};}catch{return {};}}
@@ -11,7 +11,7 @@ export async function connect(){
   if(!LIVE_ENABLED)throw new Error('النسخة الحية لم تُفعّل بعد. استخدم المعاينة التجريبية أو اتبع دليل تفعيل Firebase.');
   const base='https://www.gstatic.com/firebasejs/12.19.0/';
   const [app,f,a,s]=await Promise.all(['firebase-app.js','firebase-firestore.js','firebase-auth.js','firebase-storage.js'].map(x=>import(base+x)));
-  sdk={...f,...a,...s};const instance=app.getApps().find(a=>a.name==='backup-only')||app.initializeApp(firebaseConfig,'backup-only');db=f.getFirestore(instance);auth=a.getAuth(instance);storage=s.getStorage(instance);await a.setPersistence(auth,a.browserSessionPersistence);
+  sdk={...f,...a,...s};const instance=app.getApps().find(a=>a.name==='backup-only')||app.initializeApp(firebaseConfig,'backup-only');db=f.getFirestore(instance);auth=a.getAuth(instance);storage=s.getStorage(instance);s.setMaxUploadRetryTime(storage,20000);s.setMaxOperationRetryTime(storage,20000);await a.setPersistence(auth,a.browserSessionPersistence);
 }
 export async function login(email,password){if(demo)return user;const r=await sdk.signInWithEmailAndPassword(auth,email,password);user=r.user;await checkAdmin();return user;}
 export async function checkAdmin(){if(demo)return true;const s=await sdk.getDoc(sdk.doc(db,'admins',auth.currentUser.uid));if(!s.exists()||s.data().active!==true){await sdk.signOut(auth);throw new Error('هذا الحساب غير مخوّل للإدارة. راجع خطوة إضافة UID في الدليل.');}user=auth.currentUser;return true;}
@@ -36,6 +36,6 @@ export async function uploadImage(file){
   const bmp=await createImageBitmap(file);if(bmp.width*bmp.height>40000000){bmp.close();throw new Error('أبعاد الصورة كبيرة جداً.');}
   const scale=Math.min(1,1400/Math.max(bmp.width,bmp.height)),canvas=document.createElement('canvas');canvas.width=Math.round(bmp.width*scale);canvas.height=Math.round(bmp.height*scale);canvas.getContext('2d').drawImage(bmp,0,0,canvas.width,canvas.height);bmp.close();const blob=await new Promise(r=>canvas.toBlob(r,'image/webp',.82));if(!blob||blob.size>2*1024*1024)throw new Error('تعذر ضغط الصورة إلى حجم مناسب.');
   if(demo)throw new Error('رفع الصور متاح بعد تفعيل Firebase؛ المعاينة لا ترفع ملفات.');
-  const r=sdk.ref(storage,'catalog/'+id()+'.webp');await sdk.uploadBytes(r,blob,{contentType:'image/webp',cacheControl:'public,max-age=31536000,immutable'});return sdk.getDownloadURL(r);
+  const r=sdk.ref(storage,'catalog/'+id()+'.webp');const task=sdk.uploadBytesResumable(r,blob,{contentType:'image/webp',cacheControl:'public,max-age=31536000,immutable'});let timer;try{await Promise.race([task,new Promise((_,reject)=>{timer=setTimeout(()=>{task.cancel();reject(new Error('انتهت مهلة رفع الصورة. تحقق من تفعيل Firebase Storage والفوترة وقواعد الصور، ثم أعد المحاولة. بيانات النموذج محفوظة في الشاشة.'));},25000);})]);return await sdk.getDownloadURL(r);}catch(e){if(e.code?.startsWith('storage/'))throw new Error('تعذر رفع الصورة. تحقق من تفعيل Storage وقواعده والاتصال. لم تُحفظ تعديلات النبتة؛ يمكنك إعادة المحاولة.');throw e;}finally{clearTimeout(timer);}
 }
 

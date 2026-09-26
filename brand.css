@@ -11,3 +11,7 @@
 @media print{.invoice-logo{width:65px;height:65px}.invoice-head{border-bottom-color:#ad0707}}
 
 .plant-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:18px}.plant-card h2{font-size:21px;margin:0}.plant-card .actions{margin-top:18px;flex-wrap:wrap}.plant-card .row{flex-wrap:wrap;gap:8px}.plant-card .row small{width:100%;color:var(--muted)}details>summary{cursor:pointer;padding:12px 0;font-weight:600}details[open]>.form-grid{margin-top:12px}
+
+.invoice table{font-size:17px;line-height:1.7;border-collapse:collapse;width:100%}.invoice th,.invoice td{border:1px solid #aaa;padding:12px;text-align:right;color:#111}.invoice th{background:#eee;font-weight:700}.invoice .money{font-size:17px;white-space:nowrap}.invoice .row{font-size:18px}.invoice .table-wrap{overflow:auto}.invoice a[aria-disabled=true]{opacity:.5;pointer-events:none}@media print{.invoice table{font-size:14pt}.invoice th,.invoice td{padding:9pt;border:1px solid #888}.invoice .money{font-size:13pt}.invoice .row{font-size:14pt}.invoice .table-wrap{overflow:visible}.invoice td:first-child{overflow-wrap:anywhere}}
+.invoice th{font-size:17px;font-weight:700}
+@media print{.invoice th{font-size:14pt}}

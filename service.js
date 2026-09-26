@@ -1,3 +1,4 @@
+import {phoneNumber} from './customer-domain.js';
 import * as D from './domain.js';
 import * as store from './store.js';
 const now=()=>new Date().toISOString();
@@ -11,7 +12,7 @@ export async function receivePlant(input,receipt,op=D.id()){
     const old=docs[path];let p;
     if(receipt.kind==='production'){
       D.assert(old&&!old.archived,'النبتة غير موجودة.');D.assert(old.revision===input.revision,'تغيرت النبتة. أعد فتح إضافة الإنتاج.');p=structuredClone(old);
-      let v=p.variants.find(v=>v.id===receipt.variantId);
+      let v=p.variants.find(v=>v.id===receipt.variantId)||p.variants.find(v=>v.type.trim().toLowerCase()===String(receipt.type||'').trim().toLowerCase());if(v)receipt={...receipt,variantId:v.id};
       if(!v){D.assert(receipt.type?.trim(),'اسم الصنف مطلوب.');D.assert(!p.variants.some(v=>v.type.trim()===receipt.type.trim()),'الصنف موجود؛ اختره من القائمة.');v={id:receipt.variantId,type:receipt.type.trim(),qty:0,reserved:0,cost:0,price:0,sell:false};p.variants.push(v);}
       D.integerMoney(receipt.price);v.price=receipt.price;v.sell=!!receipt.sell;
     }else{D.assert(!old,'هذه النبتة موجودة بالفعل.');D.assert(input.variants.every(v=>v.qty===0&&v.reserved===0),'النبتة الجديدة تبدأ بصفر قبل تسجيل الاستلام.');p=structuredClone(input);}
@@ -49,9 +50,10 @@ export async function stockChange(input,op=D.id()){
 }
 export async function createOrder(input,mode,op=D.id()){
   D.assert(['reserve','sell'].includes(mode),'حالة غير صالحة.');D.assert(input.customer?.trim(),'اسم العميل مطلوب.');input.items=D.normalizeItems(input.items);D.dateValue(input.date);D.integerMoney(input.paid);if(mode==='reserve'){D.dateValue(input.expires);D.assert(input.expires>=input.date,'انتهاء الحجز قبل تاريخ الطلب.');D.assert(input.paid===0,'سجّل البيع قبل استلام الدفعات.');}
-  const paths=[...new Set(input.items.map(i=>'products/'+i.productId))];
-  return store.atomic([...paths,'orders/'+op],docs=>{if(docs['orders/'+op])return {result:op};const plan=D.planOrder(paths.map(p=>docs[p]),input,mode);D.assert(input.paid<=plan.total,'الدفعة أكبر من إجمالي الطلب.');const order={id:op,number:'TP-'+op.slice(0,8).toUpperCase(),customer:input.customer,source:input.source||'Instagram',destination:input.destination||'',notes:input.notes||'',date:input.date,expires:mode==='reserve'?input.expires:'',items:plan.items,subtotal:plan.subtotal,cogs:plan.cogs,total:plan.total,shippingCharged:plan.shippingCharged,shippingCost:plan.shippingCost,paid:input.paid,status:mode==='reserve'?'reserved':'sold',fulfillment:'pending',revision:1,createdAt:now()};
+  const paths=[...new Set(input.items.map(i=>'products/'+i.productId))];const phone=input.customerPhone?phoneNumber(input.customerPhone):'';const customerId=input.customerId||(phone?'phone-'+phone:'');D.assert(!customerId||/^phone-[1-9][0-9]{7,14}$/.test(customerId),'معرّف العميل غير صالح.');
+  return store.atomic([...paths,'orders/'+op,...(customerId?['customers/'+customerId]:[])],docs=>{if(docs['orders/'+op])return {result:op};const savedCustomer=customerId?docs['customers/'+customerId]:null;if(input.customerId)D.assert(savedCustomer,'اختر عميلاً مسجلاً صالحاً.');if(savedCustomer)input={...input,customer:savedCustomer.name,customerPhone:savedCustomer.phone};else input={...input,customerPhone:phone};input.customerId=customerId;const plan=D.planOrder(paths.map(p=>docs[p]),input,mode);D.assert(input.paid<=plan.total,'الدفعة أكبر من إجمالي الطلب.');const order={id:op,number:'TP-'+op.slice(0,8).toUpperCase(),customer:input.customer,customerId:input.customerId||'',customerPhone:input.customerPhone||'',source:input.source||'Instagram',destination:input.destination||'',notes:input.notes||'',date:input.date,expires:mode==='reserve'?input.expires:'',items:plan.items,subtotal:plan.subtotal,cogs:plan.cogs,total:plan.total,shippingCharged:plan.shippingCharged,shippingCost:plan.shippingCost,paid:input.paid,status:mode==='reserve'?'reserved':'sold',fulfillment:'pending',revision:1,createdAt:now()};
     const writes={...productWrites(plan.products),['orders/'+op]:order,['audit/'+op]:audit(op,mode,order.number)};
+    if(customerId&&!savedCustomer){const at=now();writes['customers/'+customerId]={id:customerId,name:input.customer,phone,city:input.destination||'',notes:'',marketingConsent:false,consentUpdatedAt:at,revision:1,updatedAt:at};}
     plan.movements.forEach((m,i)=>writes['movements/'+op+'-'+i]={...m,id:op+'-'+i,orderId:op,date:input.date,at:now(),by:store.uid()});
     if(input.paid>0)writes['cash/'+op+'-payment']={id:op+'-payment',direction:'in',category:'payment',amount:input.paid,date:input.date,reference:op};
     if(mode==='sell'&&input.shippingCost>0)writes['cash/'+op+'-shipping']={id:op+'-shipping',direction:'out',category:'shipping',amount:input.shippingCost,date:input.date,reference:op};
