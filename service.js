@@ -12,9 +12,9 @@ export async function receivePlant(input,receipt,op=D.id()){
     const old=docs[path];let p;
     if(receipt.kind==='production'){
       D.assert(old&&!old.archived,'النبتة غير موجودة.');D.assert(old.revision===input.revision,'تغيرت النبتة. أعد فتح إضافة الإنتاج.');p=structuredClone(old);
-      let v=p.variants.find(v=>v.id===receipt.variantId)||p.variants.find(v=>v.type.trim().toLowerCase()===String(receipt.type||'').trim().toLowerCase());if(v)receipt={...receipt,variantId:v.id};
+      let v=p.variants.find(v=>v.id===receipt.variantId)||p.variants.find(v=>!D.variantHidden(v)&&v.type.trim().toLowerCase()===String(receipt.type||'').trim().toLowerCase())||p.variants.find(v=>v.type.trim().toLowerCase()===String(receipt.type||'').trim().toLowerCase());if(v)receipt={...receipt,variantId:v.id};
       if(!v){D.assert(receipt.type?.trim(),'اسم الصنف مطلوب.');D.assert(!p.variants.some(v=>v.type.trim()===receipt.type.trim()),'الصنف موجود؛ اختره من القائمة.');v={id:receipt.variantId,type:receipt.type.trim(),qty:0,reserved:0,cost:0,price:0,sell:false};p.variants.push(v);}
-      D.integerMoney(receipt.price);v.price=receipt.price;v.sell=!!receipt.sell;
+      D.integerMoney(receipt.price);v.price=receipt.price;v.sell=!!receipt.sell;v.hidden=false;
     }else{D.assert(!old,'هذه النبتة موجودة بالفعل.');D.assert(input.variants.every(v=>v.qty===0&&v.reserved===0),'النبتة الجديدة تبدأ بصفر قبل تسجيل الاستلام.');p=structuredClone(input);}
     const received=D.receiveStock(p,receipt.variantId,receipt.qty,receipt.unitCost,receipt.landed||0);p=received.product;
     const amount=received.total;D.integerMoney(amount);
@@ -30,7 +30,7 @@ function productWrites(ps){const w={};for(const p of ps){bump(p);w['products/'+p
 export async function saveProduct(input,op=D.id()){
   D.validateProduct(input);const path='products/'+input.id;
   return store.atomic([path,'audit/'+op],docs=>{if(docs['audit/'+op])return {result:input.id};const old=docs[path];D.assert(!old||old.revision===input.revision,'تغيرت النبتة على جهاز آخر. أغلق النموذج وأعد فتحه.');const p=structuredClone(input);
-    if(old){D.assert(old.variants.every(v=>p.variants.some(x=>x.id===v.id)),'لا يمكن إزالة صنف له تاريخ؛ أوقف عرضه بدلاً من حذفه.');p.code=old.code;p.variants.forEach(v=>{const prev=old.variants.find(x=>x.id===v.id);if(prev){v.qty=prev.qty;v.reserved=prev.reserved;v.cost=prev.cost;v.value=D.stockValue(prev);}else{D.assert(v.qty===0&&v.reserved===0&&v.cost===0,'الصنف الجديد يبدأ برصيد صفر.');v.value=0;}});if(p.archived)D.assert(p.variants.every(v=>v.qty===0&&v.reserved===0),'لا يمكن أرشفة نبات له مخزون أو حجز.');}
+    if(old){D.assert(old.variants.every(v=>p.variants.some(x=>x.id===v.id)),'لا يمكن إزالة صنف له تاريخ؛ أوقف عرضه بدلاً من حذفه.');p.code=old.code;p.variants.forEach(v=>{const prev=old.variants.find(x=>x.id===v.id);if(prev){v.qty=prev.qty;v.reserved=prev.reserved;v.cost=prev.cost;v.value=D.stockValue(prev);v.hidden=!!prev.hidden;if(D.variantHidden(v))v.sell=false;}else{D.assert(v.qty===0&&v.reserved===0&&v.cost===0,'الصنف الجديد يبدأ برصيد صفر.');v.value=0;}});if(p.archived)D.assert(p.variants.every(v=>v.qty===0&&v.reserved===0),'لا يمكن أرشفة نبات له مخزون أو حجز.');}
     else{D.assert(p.variants.every(v=>v.qty===0&&v.reserved===0),'المنتج الجديد يبدأ بصفر؛ سجل رصيداً افتتاحياً أو مشتريات.');}
     return {writes:{...productWrites([p]),['audit/'+op]:audit(op,'product',p.id)},result:p.id};
   });
@@ -82,4 +82,17 @@ export async function supply(input,op=D.id()){
     else{const value=amount*input.cost;p.cost=Math.round((p.qty*p.cost+value)/(p.qty+amount));p.qty+=amount;writes['cash/'+op]={id:op,amount:value,direction:'out',category:'supply-purchase',date:input.date,reference:pid};}
     writes['supplies/'+pid]=p;writes['audit/'+op]=audit(op,input.consume?'supply-use':'supply-purchase',pid);return {writes,result:pid};
   });
+}
+
+export async function setVariantHidden(product,variantId,hidden,op=D.id()){
+ const path='products/'+product.id;
+ return store.atomic([path,'audit/'+op],docs=>{
+  if(docs['audit/'+op])return {result:product.id};
+  const old=docs[path];D.assert(old&&!old.archived,'النبتة غير موجودة.');
+  D.assert(old.revision===product.revision,'تغيرت النبتة. أغلق النافذة وأعد فتحها.');
+  const p=structuredClone(old),v=p.variants.find(x=>x.id===variantId);D.assert(v,'الصنف غير موجود.');
+  if(hidden)D.assert(v.qty===0&&v.reserved===0,'يمكن إخفاء الصنف فقط عندما يكون الموجود والمحجوز صفراً.');
+  v.hidden=!!hidden;v.sell=false;
+  return {writes:{...productWrites([p]),['audit/'+op]:audit(op,hidden?'variant-hide':'variant-restore',{productId:p.id,variantId})},result:p.id};
+ });
 }

@@ -8,6 +8,7 @@ export const formatMoney = n => new Intl.NumberFormat('ar-SA',{style:'currency',
 export function localDate(date=new Date()){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);return ['year','month','day'].map(k=>p.find(x=>x.type===k).value).join('-');}
 export function dateValue(s){assert(/^\d{4}-\d{2}-\d{2}$/.test(s)&&new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s,'التاريخ غير صالح.');return s;}
 export const available=v=>v.qty-v.reserved;
+export const variantHidden=v=>!!v.hidden&&v.qty===0&&v.reserved===0;
 export const stockValue=v=>v.value??v.cost*v.qty;
 export function validateProduct(p){
   assert(typeof p.id==='string'&&p.id.length>0,'معرّف المنتج غير صالح.');
@@ -19,7 +20,7 @@ export function validateProduct(p){
   return p;
 }
 export function safeImage(url){try{const u=new URL(url);return u.protocol==='https:'?u.href:'';}catch{return '';}}
-export function publicProduct(p){validateProduct(p);return {id:p.id,code:p.code,name:p.name,genus:p.genus,description:p.publicDescription,care:p.care||'',size:p.size||'',photoDate:p.photoDate||'',actualPhoto:!!p.actualPhoto,image:safeImage(p.image),published:!!p.published&&!p.archived,variants:p.variants.filter(v=>v.sell).map(v=>({id:v.id,type:v.type,price:v.price,available:available(v)})),updatedAt:p.updatedAt};}
+export function publicProduct(p){validateProduct(p);return {id:p.id,code:p.code,name:p.name,genus:p.genus,description:p.publicDescription,care:p.care||'',size:p.size||'',photoDate:p.photoDate||'',actualPhoto:!!p.actualPhoto,image:safeImage(p.image),published:!!p.published&&!p.archived,variants:p.variants.filter(v=>v.sell&&!variantHidden(v)).map(v=>({id:v.id,type:v.type,price:v.price,available:available(v)})),updatedAt:p.updatedAt};}
 export function normalizeItems(items){assert(Array.isArray(items)&&items.length>0&&items.length<=20,'الطلب يحتاج من 1 إلى 20 بنداً.');const seen=new Set();return items.map(it=>{assert(typeof it.productId==='string'&&it.productId&&typeof it.variantId==='string'&&it.variantId,'اختر النبات والصنف لكل بند.');const key=it.productId+'/'+it.variantId;assert(!seen.has(key),'الصنف مكرر؛ اجمع كميته في بند واحد.');seen.add(key);return {...it,qty:quantity(it.qty),price:integerMoney(it.price)};});}
 // Pure all-or-nothing plan. The repository commits this plan in one transaction.
 export function planOrder(products,input,mode){
@@ -33,7 +34,7 @@ export function planOrder(products,input,mode){
     if(mode==='sell')v.qty-=it.qty;
     if(mode==='fulfill'||mode==='cancel'){assert(v.reserved>=it.qty,'الحجز لا يطابق المخزون.');v.reserved-=it.qty;if(mode==='fulfill')v.qty-=it.qty;}
     if(mode==='sell'||mode==='fulfill'){v.value=beforeValue-it.costValue;if(v.qty>0)v.cost=Math.round(v.value/v.qty);}
-    if(mode==='return'){if(input.restock){v.value=beforeValue+(it.costValue??it.cost*it.qty);v.qty+=it.qty;v.cost=Math.round(v.value/v.qty);p.archived=false;p.published=false;}}
+    if(mode==='return'){if(input.restock){v.hidden=false;v.value=beforeValue+(it.costValue??it.cost*it.qty);v.qty+=it.qty;v.cost=Math.round(v.value/v.qty);p.archived=false;p.published=false;}}
     it.name=p.name;it.type=v.type;it.code=p.code;
     integerMoney(it.cost);
     movements.push({productId:p.id,variantId:v.id,qty:it.qty,kind:mode,restock:mode==='return'?!!input.restock:null,after:v.qty,reservedAfter:v.reserved});validateProduct(p);
@@ -42,7 +43,7 @@ export function planOrder(products,input,mode){
   integerMoney(subtotal);integerMoney(cogs);const shippingCharged=integerMoney(input.shippingCharged),shippingCost=integerMoney(input.shippingCost);
   return {products:ps,items,movements,subtotal,cogs,total:subtotal+shippingCharged,shippingCharged,shippingCost,profit:subtotal+shippingCharged-cogs-shippingCost};
 }
-export function receiveStock(product,variantId,q,unitCost,landed=0){const p=structuredClone(product);const v=p.variants.find(v=>v.id===variantId);assert(v,'الصنف غير موجود.');q=quantity(q);integerMoney(unitCost);integerMoney(landed);const value=q*unitCost+landed;v.value=stockValue(v)+value;v.cost=Math.round(v.value/(v.qty+q));v.qty+=q;validateProduct(p);return {product:p,total:value};}
+export function receiveStock(product,variantId,q,unitCost,landed=0){const p=structuredClone(product);const v=p.variants.find(v=>v.id===variantId);assert(v,'الصنف غير موجود.');q=quantity(q);integerMoney(unitCost);integerMoney(landed);const value=q*unitCost+landed;v.value=stockValue(v)+value;v.cost=Math.round(v.value/(v.qty+q));v.qty+=q;v.hidden=false;validateProduct(p);return {product:p,total:value};}
 export function paymentState(order){const due=order.total-order.paid;return {due,status:order.paid===0?'لم يُدفع':due===0?'مدفوع بالكامل':'دفع جزئي'};}
 export function totals({orders=[],expenses=[],cash=[]},from,to){const within=x=>x.date>=from&&x.date<=to;const sales=orders.filter(o=>['sold','returned'].includes(o.status)&&within(o));const returns=orders.filter(o=>o.status==='returned'&&within({date:o.returnDate}));
   const revenue=sales.reduce((s,o)=>s+o.total,0)-returns.reduce((s,o)=>s+o.total,0);

@@ -22,7 +22,7 @@ export function newPlant(){
 }
 export function addProduction(p){
   const op=D.id(),newId=D.id();
-  const choice=select('أضف الإنتاج إلى','variant',[...p.variants.map(v=>[v.id,v.type]),['new','صنف جديد: كورمة أو كتنج']],p.variants.find(v=>/كورم/.test(v.type))?.id||'new');
+  const choice=select('أضف الإنتاج إلى','variant',[...p.variants.filter(v=>!D.variantHidden(v)).map(v=>[v.id,v.type]),['new','صنف جديد: كورمة أو كتنج']],p.variants.find(v=>!D.variantHidden(v)&&/كورم/.test(v.type))?.id||'new');
   const name=field('اسم الصنف الجديد','type','text','كورمة',{required:'',maxlength:'100'}),price=number('سعر بيع القطعة الواحدة (ر.س)','price'),sell=check('متاح للبيع','sell',true);
   const content=el('div',{class:'form-grid'},el('p',{class:'hint full'},p.name+' — أضف عدد القطع المنتجة، وليس إجمالي المخزون. النبتة الأم تبقى كما هي.'),choice,name,quantity(),price,sell,details(number('تكلفة جديدة مدفوعة للقطعة (ر.س)','cost'),field('تاريخ الإنتاج','date','date',D.localDate(),{required:''})),el('p',{class:'hint full'},'اترك التكلفة صفراً إن لم تدفع مبلغاً جديداً. لا تكرر تكلفة مستلزمات مسجلة سابقاً. إذا كانت النبتة منشورة، يظهر الصنف المتاح للبيع بعد الحفظ.'));
   const syncVariant=()=>{const v=p.variants.find(v=>v.id===choice.querySelector('select').value);name.hidden=!!v;name.querySelector('input').disabled=!!v;price.querySelector('input').value=((v?.price||0)/100).toFixed(2);sell.querySelector('input').checked=v?!!v.sell:true;};choice.querySelector('select').addEventListener('change',syncVariant);syncVariant();
