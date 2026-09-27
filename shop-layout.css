@@ -1,7 +1,7 @@
 /* Storefront layout: media never contributes its intrinsic size to a card. */
 .shop-page{--header:76px}
 .shop-page .shop-main{max-width:1200px}
-.shop-page .product-card{min-width:0;box-shadow:0 5px 20px #24170f06;border-radius:20px;align-self:start}
+.shop-page .product-card{min-width:0;box-shadow:0 5px 20px #24170f06;border-radius:20px;align-self:stretch}
 .shop-page .product-visual{display:block;position:relative;width:100%;height:auto;aspect-ratio:1;overflow:hidden;flex:none;min-width:0;min-height:0;background:#f2efeb}
 .shop-page .product-visual>img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:100%;object-fit:contain}
 .shop-page .product-visual>.plant-placeholder{position:absolute;inset:0}
@@ -9,7 +9,7 @@
 .shop-page .product-content{gap:10px;padding:20px;min-width:0}
 .shop-page .product-content h3{font-size:20px;line-height:1.5;margin:0;word-break:normal;overflow-wrap:anywhere}
 .shop-page .product-content p{margin:0;font-size:15px;line-height:1.7}
-.shop-page .product-content .button{margin-top:6px;min-height:48px;border-radius:12px;font-size:15px;background:#faf7f5}
+.shop-page .product-content .button{margin-top:auto;min-height:48px;border-radius:12px;font-size:15px;background:#faf7f5}
 .shop-page .product-code{font-size:11px;direction:ltr;text-align:right}
 .shop-page .shop-filter{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
 .shop-page .shop-filter input,.shop-page .shop-filter select{min-width:0;border-color:#d7cfca;border-radius:12px;min-height:50px}
@@ -66,3 +66,6 @@
 }
 @media(min-width:540px) and (max-width:760px){.shop-page .catalog{grid-template-columns:repeat(2,minmax(0,1fr))}.shop-page .product-content h3{font-size:18px}}
 @media(max-width:360px){.shop-page .topbar{padding:0 12px}.shop-page .brand{font-size:16px}.shop-page .brand-mark{width:36px;height:36px}.shop-page .shop-main{padding-inline:12px}.shop-page .catalog-header h2{font-size:20px}}
+
+/* Equal rows keep images and actions aligned without truncating plant names. */
+.shop-page .catalog{grid-auto-rows:1fr}.shop-page .product-card{height:100%}.shop-page .product-content{min-height:220px}.shop-page .product-content h3{min-height:3em}.shop-page .product-content .button{margin-top:auto}.shop-page .product-visual{aspect-ratio:1!important}
