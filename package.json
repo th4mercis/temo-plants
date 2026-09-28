@@ -1,0 +1,14 @@
+{
+  "name": "temo-plants-v2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-market.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

@@ -1,0 +1,10 @@
+[build]
+  command = "node build-market.mjs"
+  publish = "dist"
+  functions = "netlify/functions"
+[build.environment]
+  NODE_VERSION = "22"
+  MARKET_MODEL = "gpt-4.1"
+[functions]
+  node_bundler = "esbuild"
+
