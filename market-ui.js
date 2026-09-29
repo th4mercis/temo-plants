@@ -12,7 +12,7 @@ export function marketDialog(p,selected){
  const notes=field('حجم أو حالة مميزة (اختياري)','quick-notes','text','',{maxlength:300});
  const inputs=el('div',{class:'form-grid'},name,form,custom),status=el('p',{role:'status'}),out=el('div',{class:'stack','aria-live':'polite'}),links=el('div',{class:'actions'});
  let busy=false,serial=0,last=null;
- const read=()=>({name:name.querySelector('input').value.trim(),form:form.querySelector('select').value,custom:custom.querySelector('input').value.trim(),condition:notes.querySelector('input').value.trim(),stage:'unknown'});
+ const read=()=>({mode:'quick',name:name.querySelector('input').value.trim(),form:form.querySelector('select').value,custom:custom.querySelector('input').value.trim(),condition:notes.querySelector('input').value.trim(),stage:'unknown'});
  const fmt=(n,c)=>new Intl.NumberFormat('ar-SA',{maximumFractionDigits:2}).format(n)+' '+c;
  function update(){serial++;last=null;out.replaceChildren();const i=read();custom.hidden=i.form!=='custom';const term=i.name+' '+(i.form==='custom'?i.custom:i.form==='mother'?'plant':i.form==='baby'?'baby plant':i.form)+' price';links.replaceChildren(...[['فتح بحث Google',term],['إعلانات Instagram العامة',term+' site:instagram.com']].map(([label,q])=>el('a',{class:'button subtle',href:'https://www.google.com/search?q='+encodeURIComponent(q),target:'_blank',rel:'noopener noreferrer'},label)));}
  inputs.addEventListener('input',update);notes.addEventListener('input',update);update();
@@ -25,7 +25,8 @@ export function marketDialog(p,selected){
    if(!response.headers.get('content-type')?.includes('application/json'))throw Error('خدمة البحث غير متاحة حالياً. استخدم رابط Google أدناه.');
    const data=await response.json();if(!response.ok)throw Error(data.error||'تعذر البحث.');if(ticket!==serial)return;
    const overview=priceOverview(i,data.comparisons||[]);last={input:i,...data,overview};status.textContent='آخر بحث: '+new Date(data.searchedAt).toLocaleString('ar-SA')+(data.cached?' · نتيجة محفوظة':'');
-   out.append(el('h3',{},overview.groups.length?'الأسعار التقريبية في الإعلانات':'لم نجد سعراً موثقاً لهذا الصنف في هذا البحث'));
+   out.append(el('h3',{},data.summary||overview.groups.length?'نتيجة بحث السعر':'لم نجد سعراً موثقاً لهذا الصنف في هذا البحث'));
+   if(data.summary){out.append(el('div',{class:'panel',style:'white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.9'},data.summary));for(const source of data.sources||[])if(safeURL(source.url))out.append(el('a',{href:safeURL(source.url),target:'_blank',rel:'noopener noreferrer'},source.title||'المصدر'));}
    for(const g of overview.groups){out.append(el('section',{class:'panel stack'},el('h4',{},g.region==='local'?'السعودية':'متاجر خارج السعودية'),el('strong',{},g.rows.length===1?fmt(g.min,g.currency):fmt(g.min,g.currency)+' – '+fmt(g.max,g.currency)),el('p',{class:'hint'},g.rows.length+' إعلان · '+(g.rows.length===1?'سعر إعلان واحد، وليس نطاق السوق':'أقل وأعلى سعر للقطعة في النتائج المطابقة')), ...g.rows.map(card)));}
    out.append(el('p',{class:'hint'},'مؤشر أولي منخفض الثقة من أسعار الإعلانات، وليس مبيعات مؤكدة أو تقييماً لنبتتك. العملات معروضة كما هي؛ الشحن والرسوم غير مشمولة، وقد تختلف الأحجام والحالة والتوفر.'));
    if(overview.other.length)out.append(el('details',{},el('summary',{},'نتائج لأشكال أخرى أو غير مطابقة — لا تدخل في النطاق'),...overview.other.map(card)));
@@ -38,7 +39,7 @@ export function marketDialog(p,selected){
  dialog('بحث عن سعر تقريبي',el('div',{class:'stack market-dialog'},el('p',{class:'hint'},'الاسم والصنف فقط. نعرض الأسعار ومصادرها دون تغيير سعر البيع.'),inputs,el('details',{},el('summary',{},'تفاصيل اختيارية لتحسين البحث'),notes),go,status,out,links,el('details',{},el('summary',{},'بحث محفوظ وخيارات إضافية'),history,btn('إضافة إعلان يدوي / تحليل مفصل',()=>detailedMarketDialog(p,current)))));
  // Prevent Enter from reloading the page or silently submitting the dialog form.
  document.querySelector('#dialog form').addEventListener('submit',e=>{e.preventDefault();search();});
- store.list('audit').then(rows=>{for(const r of rows.filter(r=>r.kind==='market-price-search'&&r.productId===p.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,5))history.append(el('details',{},el('summary',{},'بحث محفوظ · '+r.createdAt.slice(0,16)),...r.report.overview.groups.flatMap(g=>g.rows.map(card)),...r.report.overview.other.map(card)));}).catch(()=>{});
+ store.list('audit').then(rows=>{for(const r of rows.filter(r=>r.kind==='market-price-search'&&r.productId===p.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,5))history.append(el('details',{},el('summary',{},'بحث محفوظ · '+r.createdAt.slice(0,16)),el('p',{style:'white-space:pre-wrap'},r.report.summary||''),...(r.report.sources||[]).filter(s=>safeURL(s.url)).map(s=>el('a',{href:s.url,target:'_blank',rel:'noopener noreferrer'},s.title||'المصدر')),...r.report.overview.groups.flatMap(g=>g.rows.map(card)),...r.report.overview.other.map(card)));}).catch(()=>{});
 }
 function detailedMarketDialog(p,selected){
  let comparisons=[],result=null,serial=0,busy=false,reportSaved=false;
