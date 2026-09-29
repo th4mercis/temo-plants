@@ -2,10 +2,45 @@ import {el,btn,field,select,check,dialog,notice,table} from './ui.js';
 import * as D from './domain.js';
 import * as store from './store.js';
 import * as api from './service.js';
-import {estimate,market,forms,stages,safeURL} from './market-domain.js';
+import {estimate,market,forms,stages,safeURL,priceOverview} from './market-domain.js';
 const country=[['SA','السعودية'],['KW','الكويت'],['TH','تايلند'],['CN','الصين'],['VN','فيتنام'],['US','الولايات المتحدة'],['NL','هولندا'],['DE','ألمانيا'],['FR','فرنسا'],['GB','بريطانيا'],['OTHER','بلد آخر (أدخل رمز ISO)']];
 const currencies=['SAR','KWD','THB','CNY','VND','EUR','USD','GBP'].map(c=>[c,c]);
 export function marketDialog(p,selected){
+ const current=selected||p.variants.find(v=>!D.variantHidden(v))||p.variants[0];
+ const type=current?.type||'',initial=/كورم|corm/i.test(type)?'corm':/كتنج|cutting/i.test(type)?'cutting':/أم|مذر|mother/i.test(type)?'mother':/شتل|baby|seedling/i.test(type)?'baby':'custom';
+ const name=field('اسم النبتة','quick-name','text',p.name,{maxlength:200}),form=select('أبحث عن سعر','quick-form',forms,initial),custom=field('الصنف المخصص','quick-custom','text',initial==='custom'?type:'');
+ const notes=field('حجم أو حالة مميزة (اختياري)','quick-notes','text','',{maxlength:300});
+ const inputs=el('div',{class:'form-grid'},name,form,custom),status=el('p',{role:'status'}),out=el('div',{class:'stack','aria-live':'polite'}),links=el('div',{class:'actions'});
+ let busy=false,serial=0,last=null;
+ const read=()=>({name:name.querySelector('input').value.trim(),form:form.querySelector('select').value,custom:custom.querySelector('input').value.trim(),condition:notes.querySelector('input').value.trim(),stage:'unknown'});
+ const fmt=(n,c)=>new Intl.NumberFormat('ar-SA',{maximumFractionDigits:2}).format(n)+' '+c;
+ function update(){serial++;last=null;out.replaceChildren();const i=read();custom.hidden=i.form!=='custom';const term=i.name+' '+(i.form==='custom'?i.custom:i.form==='mother'?'plant':i.form==='baby'?'baby plant':i.form)+' price';links.replaceChildren(...[['فتح بحث Google',term],['إعلانات Instagram العامة',term+' site:instagram.com']].map(([label,q])=>el('a',{class:'button subtle',href:'https://www.google.com/search?q='+encodeURIComponent(q),target:'_blank',rel:'noopener noreferrer'},label)));}
+ inputs.addEventListener('input',update);notes.addEventListener('input',update);update();
+ function card(r){return el('article',{class:'panel stack'},el('a',{href:safeURL(r.url),target:'_blank',rel:'noopener noreferrer'},r.seller||new URL(r.url).hostname),el('strong',{},fmt(r.price/r.units,r.currency)+' / قطعة'),el('p',{},r.description||r.name),el('p',{class:'hint'},(forms.find(([k])=>k===r.form)?.[1]||r.custom||'شكل غير محدد')+' · '+(r.country||'البلد غير محدد')+' · '+(r.saleType==='wholesale'?'جملة':r.saleType==='auction'?'مزاد':'سعر إعلان')),el('p',{class:'hint'},r.date?'تاريخ الإعلان: '+r.date:'تاريخ الإعلان غير مذكور'))}
+ async function search(refresh=false){
+  if(busy)return;const i=read();if(!i.name){status.textContent='اكتب اسم النبتة أولاً.';return;}if(i.form!=='custom')i.custom='';
+  if(store.demo){status.textContent='البحث الحي متاح بعد تسجيل الدخول. يمكنك تجربة روابط Google أدناه.';return;}
+  const ticket=serial;busy=true;go.disabled=true;go.textContent='جارٍ البحث…';status.textContent='نبحث عن أسعار منشورة وروابطها. قد يستغرق البحث نحو دقيقة.';out.replaceChildren();
+  try{const token=await store.marketToken(),response=await fetch('/.netlify/functions/market-estimate',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({input:i,refresh}),signal:AbortSignal.timeout(60000)});
+   if(!response.headers.get('content-type')?.includes('application/json'))throw Error('خدمة البحث غير متاحة حالياً. استخدم رابط Google أدناه.');
+   const data=await response.json();if(!response.ok)throw Error(data.error||'تعذر البحث.');if(ticket!==serial)return;
+   const overview=priceOverview(i,data.comparisons||[]);last={input:i,...data,overview};status.textContent='آخر بحث: '+new Date(data.searchedAt).toLocaleString('ar-SA')+(data.cached?' · نتيجة محفوظة':'');
+   out.append(el('h3',{},overview.groups.length?'الأسعار التقريبية في الإعلانات':'لم نجد سعراً موثقاً لهذا الصنف في هذا البحث'));
+   for(const g of overview.groups){out.append(el('section',{class:'panel stack'},el('h4',{},g.region==='local'?'السعودية':'متاجر خارج السعودية'),el('strong',{},g.rows.length===1?fmt(g.min,g.currency):fmt(g.min,g.currency)+' – '+fmt(g.max,g.currency)),el('p',{class:'hint'},g.rows.length+' إعلان · '+(g.rows.length===1?'سعر إعلان واحد، وليس نطاق السوق':'أقل وأعلى سعر للقطعة في النتائج المطابقة')), ...g.rows.map(card)));}
+   out.append(el('p',{class:'hint'},'مؤشر أولي منخفض الثقة من أسعار الإعلانات، وليس مبيعات مؤكدة أو تقييماً لنبتتك. العملات معروضة كما هي؛ الشحن والرسوم غير مشمولة، وقد تختلف الأحجام والحالة والتوفر.'));
+   if(overview.other.length)out.append(el('details',{},el('summary',{},'نتائج لأشكال أخرى أو غير مطابقة — لا تدخل في النطاق'),...overview.other.map(card)));
+   if(data.message)out.append(el('p',{class:'hint'},data.message));
+   out.append(btn('تحديث البحث',()=>search(true)),btn('حفظ نتيجة البحث',async e=>{if(!last||ticket!==serial)return;const button=e.currentTarget;const id=D.id();await store.atomic(['audit/'+id],()=>({writes:{['audit/'+id]:{id,kind:'market-price-search',productId:p.id,uid:store.uid(),createdAt:new Date().toISOString(),report:last}}}));button.disabled=true;notice('حُفظت نتيجة البحث دون تغيير سعر البيع.');}));
+  }catch(e){if(ticket===serial)status.textContent=e.name==='TimeoutError'?'تأخر البحث. حاول مجدداً أو افتح Google أدناه.':e.message;}finally{busy=false;go.disabled=false;go.textContent='ابحث عن السعر';}
+ }
+ const go=btn('ابحث عن السعر',()=>search(),'button primary');
+ const history=el('div',{class:'stack'});
+ dialog('بحث عن سعر تقريبي',el('div',{class:'stack market-dialog'},el('p',{class:'hint'},'الاسم والصنف فقط. نعرض الأسعار ومصادرها دون تغيير سعر البيع.'),inputs,el('details',{},el('summary',{},'تفاصيل اختيارية لتحسين البحث'),notes),go,status,out,links,el('details',{},el('summary',{},'بحث محفوظ وخيارات إضافية'),history,btn('إضافة إعلان يدوي / تحليل مفصل',()=>detailedMarketDialog(p,current)))));
+ // Prevent Enter from reloading the page or silently submitting the dialog form.
+ document.querySelector('#dialog form').addEventListener('submit',e=>{e.preventDefault();search();});
+ store.list('audit').then(rows=>{for(const r of rows.filter(r=>r.kind==='market-price-search'&&r.productId===p.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,5))history.append(el('details',{},el('summary',{},'بحث محفوظ · '+r.createdAt.slice(0,16)),...r.report.overview.groups.flatMap(g=>g.rows.map(card)),...r.report.overview.other.map(card)));}).catch(()=>{});
+}
+function detailedMarketDialog(p,selected){
  let comparisons=[],result=null,serial=0,busy=false,reportSaved=false;
  const err=el('p',{role:'alert',class:'form-error'}),out=el('div',{class:'market-result','aria-live':'polite'}),cards=el('div',{class:'stack'}),history=el('div',{class:'stack'});
  const variant=select('الصنف المسجل','variant',p.variants.filter(v=>!D.variantHidden(v)).map(v=>[v.id,v.type]),selected?.id||p.variants[0]?.id);

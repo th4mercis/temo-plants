@@ -2,6 +2,21 @@
 export const market = {country:'SA',currency:'SAR',scale:100};
 export const forms=[['mother','نبتة أم'],['baby','شتلة'],['corm','كورمة'],['cutting','كتنج'],['custom','صنف مخصص']];
 export const stages=[['unknown','غير محدد'],['raw','خام / غير منبت'],['sprouted','منبت'],['rooted','مجذر'],['established','متأقلم']];
+// A browsing summary, not a local valuation: retain original currencies and unknown dates.
+export function priceOverview(input,rows){
+ const seen=new Set(),groups=new Map(),other=[];
+ for(const r of rows){
+  const url=safeURL(r.url),key=url.split('?')[0].replace(/\/$/,'');
+  if(!url||seen.has(key)||!Number.isFinite(r.price)||r.price<=0||!Number.isInteger(r.units)||r.units<1||!/^[A-Z]{3}$/.test(r.currency||''))continue;
+  seen.add(key);
+  const matching=norm(r.name)===norm(input.name)&&r.form===input.form&&(input.form!=='custom'||norm(r.custom)===norm(input.custom));
+  if(!matching||r.saleType!=='retail'){other.push(r);continue;}
+  const region=r.country===market.country?'local':'foreign',groupKey=region+':'+r.currency;
+  if(!groups.has(groupKey))groups.set(groupKey,{region,currency:r.currency,rows:[]});
+  groups.get(groupKey).rows.push({...r,unitPrice:r.price/r.units});
+ }
+ return {groups:[...groups.values()].sort((a,b)=>(a.region==='local'?0:1)-(b.region==='local'?0:1)).map(g=>{const prices=g.rows.map(r=>r.unitPrice).sort((a,b)=>a-b);return {...g,min:prices[0],max:prices.at(-1)};}),other};
+}
 const norm=s=>String(s||'').normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');
 export function safeURL(s){try{const u=new URL(s);return u.protocol==='https:'&&!u.username&&!u.password?u.href:'';}catch{return '';}}
 const validDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'')&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;

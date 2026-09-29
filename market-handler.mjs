@@ -9,7 +9,7 @@ export function makeHandler({authorize,cacheGet,cacheSet,consume,search,enabled=
   if(!enabled)return reply(503,{error:'البحث الحي غير مفعّل. يلزم إعداد مفتاح المزود على الخادم؛ يمكنك إضافة مقارنات يدوية.'});
   let input,refresh;try{const body=JSON.parse(event.body||'{}');input=publicInput(body.input);refresh=body.refresh===true;}catch{return reply(400,{error:'مدخلات البحث غير صالحة.'});}
   // Tenant comes exclusively from verified server credentials, never the browser.
-  const hash=createHash('sha256').update(JSON.stringify({tenant:user.tenant,input,version:1})).digest('hex');
+  const hash=createHash('sha256').update(JSON.stringify({tenant:user.tenant,input,version:2})).digest('hex');
   try{const cache=await cacheGet(hash);if(!refresh&&cache&&clock()-cache.timestamp<86400000)return reply(200,{...cache.result,cached:true});
    await consume(user);const result=await search(input);await cacheSet(hash,{timestamp:clock(),result,uid:user.uid,input});return reply(200,{...result,cached:false});
   }catch(e){return reply(e.code==='LIMIT'?429:502,{error:e.code==='LIMIT'?'بلغت حد البحث (10 يومياً للمتجر، ودقيقة بين الطلبات).':e.message||'تعذر البحث؛ مدخلاتك محفوظة.'});}
