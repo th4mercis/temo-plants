@@ -29,7 +29,7 @@ export async function handler(event){
  if(body.action==='status'){
   if(!/^[a-f0-9-]{36}$/i.test(body.id||'')||!/^[a-f0-9-]{36}$/i.test(body.token||''))return reply(404,{error:'رابط المتابعة غير صالح.'});
   const r=(await db.doc('shopRequests/'+body.id).get()).data();if(!r||r.tokenHash!==hash(body.token))return reply(404,{error:'رابط المتابعة غير صالح.'});
-  const o=(await db.doc('tp2_orders/'+body.id).get()).data();if(o){r.status=o.status==='reserved'?'approved':o.status;r.expires=o.expires;r.total=o.total;r.shippingCharged=o.shippingCharged;if(o.status!=='reserved')r.message='';}return reply(200,publicStatus(r));
+  const o=(await db.doc('tp2_orders/'+body.id).get()).data();if(o){r.items=o.items;r.subtotal=o.subtotal;r.status=o.status==='reserved'?'approved':o.status;r.expires=o.expires;r.total=o.total;r.shippingCharged=o.shippingCharged;if(o.status!=='reserved')r.message='';}return reply(200,publicStatus(r));
  }
  if(body.action!=='create')throw Error('عملية غير صالحة.');const input=validateRequest(body);
  const result=await db.runTransaction(async tx=>{const ref=db.doc('shopRequests/'+input.id),old=(await tx.get(ref)).data();if(old){if(old.tokenHash!==hash(input.token))throw Error('معرف مكرر.');return publicStatus(old);}

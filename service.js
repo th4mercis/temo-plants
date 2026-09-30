@@ -64,8 +64,14 @@ export async function orderAction(order,kind,extra={},op=D.id()){
   D.assert(['fulfill','cancel','return','payment','shipment'].includes(kind),'عملية غير معروفة.');
   const paths=[...new Set(order.items.map(i=>'products/'+i.productId))],date=D.dateValue(extra.date||D.localDate());
   return store.atomic(['orders/'+order.id,'audit/'+op,...paths],docs=>{if(docs['audit/'+op])return {result:op};const o=docs['orders/'+order.id];D.assert(o&&o.revision===order.revision,'تغير الطلب. حدّث الصفحة وحاول مجدداً.');const writes={};
+    // Payment or dispatch converts a reservation into an unpaid sale exactly once.
+    if(o.status==='reserved'&&(kind==='payment'||(kind==='shipment'&&['shipped','delivered'].includes(extra.fulfillment)))){
+      const plan=D.planOrder(paths.map(p=>docs[p]),o,'fulfill');Object.assign(writes,productWrites(plan.products));o.status='sold';o.date=date;o.items=plan.items;o.cogs=plan.cogs;
+      plan.movements.forEach((m,i)=>writes['movements/'+op+'-'+i]={...m,id:op+'-'+i,orderId:o.id,date,at:now(),by:store.uid()});
+      if(o.shippingCost>0)writes['cash/'+op+'-shipping']={id:op+'-shipping',amount:o.shippingCost,direction:'out',category:'shipping',date,reference:o.id};
+    }
     if(kind==='payment'){D.assert(o.status==='sold','الدفعات للطلبات المباعة فقط.');const amount=D.integerMoney(extra.amount);D.assert(amount>0&&amount<=o.total-o.paid,'المبلغ يتجاوز المتبقي أو غير موجب.');o.paid+=amount;writes['cash/'+op]={id:op,amount,direction:'in',category:'payment',date,reference:o.id};}
-    else if(kind==='shipment'){D.assert(o.status==='sold','الطلب غير مباع.');D.assert(['pending','shipped','delivered','issue'].includes(extra.fulfillment),'حالة الشحن غير صالحة.');o.fulfillment=extra.fulfillment;writes['shipments/'+o.id]={id:o.id,orderId:o.id,tracking:extra.tracking||'',carrier:extra.carrier||'',status:extra.fulfillment,date};}
+    else if(kind==='shipment'){D.assert(['reserved','sold'].includes(o.status),'الطلب غير نشط.');D.assert(['pending','shipped','delivered','issue'].includes(extra.fulfillment),'حالة الشحن غير صالحة.');o.fulfillment=extra.fulfillment;writes['shipments/'+o.id]={id:o.id,orderId:o.id,tracking:extra.tracking||'',carrier:extra.carrier||'',status:extra.fulfillment,date};}
     else{D.assert(kind==='return'?o.status==='sold':o.status==='reserved','لا يمكن تكرار العملية أو تنفيذها بهذه الحالة.');if(kind==='return')D.assert(extra.reason?.trim(),'سبب المرتجع مطلوب.');const plan=D.planOrder(paths.map(p=>docs[p]),{...o,restock:!!extra.restock},kind);Object.assign(writes,productWrites(plan.products));plan.movements.forEach((m,i)=>writes['movements/'+op+'-'+i]={...m,id:op+'-'+i,orderId:o.id,date,at:now(),by:store.uid()});
       if(kind==='fulfill'){o.status='sold';o.date=date;o.items=plan.items;o.cogs=plan.cogs;if(o.shippingCost>0)writes['cash/'+op]={id:op,amount:o.shippingCost,direction:'out',category:'shipping',date,reference:o.id};}
       if(kind==='cancel')o.status='cancelled';
@@ -94,5 +100,20 @@ export async function setVariantHidden(product,variantId,hidden,op=D.id()){
   if(hidden)D.assert(v.qty===0&&v.reserved===0,'يمكن إخفاء الصنف فقط عندما يكون الموجود والمحجوز صفراً.');
   v.hidden=!!hidden;v.sell=false;
   return {writes:{...productWrites([p]),['audit/'+op]:audit(op,hidden?'variant-hide':'variant-restore',{productId:p.id,variantId})},result:p.id};
+ });
+}
+export async function appendOrderItems(order,items,op=D.id()){
+ items=D.normalizeItems(items);const paths=[...new Set(items.map(i=>'products/'+i.productId))];
+ return store.atomic(['orders/'+order.id,'audit/'+op,...paths],docs=>{
+  if(docs['audit/'+op])return {result:order.id};const o=docs['orders/'+order.id];
+  D.assert(o&&o.revision===order.revision,'تغير الطلب؛ افتحه مجدداً قبل إضافة البنود.');
+  D.assert(['reserved','sold'].includes(o.status),'لا يمكن إضافة بنود لطلب ملغي أو مرتجع.');
+  D.assert(!['shipped','delivered'].includes(o.fulfillment),'تم شحن هذا الطلب؛ أنشئ طلباً جديداً للقطع الإضافية.');
+  for(const item of items){const previous=o.items.find(x=>x.productId===item.productId&&x.variantId===item.variantId);D.assert(!previous||previous.price===item.price,'الصنف موجود في الطلب بسعر مختلف؛ استخدم سعره السابق لإضافة الكمية.');}
+  const plan=D.planOrder(paths.map(p=>docs[p]),{items,shippingCharged:0,shippingCost:0},o.status==='reserved'?'reserve':'sell');
+  for(const item of plan.items){const previous=o.items.find(x=>x.productId===item.productId&&x.variantId===item.variantId);if(previous){previous.costValue=(previous.costValue??previous.cost*previous.qty)+(item.costValue??item.cost*item.qty);previous.qty+=item.qty;previous.cost=Math.round(previous.costValue/previous.qty);}else o.items.push(item);}
+  D.assert(o.items.length<=20,'الحد الأقصى 20 صنفاً في الطلب.');o.subtotal=o.items.reduce((s,i)=>s+i.qty*i.price,0);o.total=o.subtotal+o.shippingCharged;o.cogs=o.items.reduce((s,i)=>s+(i.costValue??i.cost*i.qty),0);D.integerMoney(o.total);o.revision++;
+  const writes={...productWrites(plan.products),['orders/'+o.id]:o,['audit/'+op]:audit(op,'order-items-add',o.number)};
+  plan.movements.forEach((m,i)=>writes['movements/'+op+'-'+i]={...m,id:op+'-'+i,orderId:o.id,date:o.date,at:now(),by:store.uid()});return {writes,result:o.id};
  });
 }
