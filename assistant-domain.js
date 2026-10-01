@@ -10,4 +10,4 @@ export function validateDraft(d){
 }
 export function exactPlant(products,name){const n=normalize(name);const found=products.filter(p=>!p.archived&&(normalize(p.name)===n||normalize(p.code)===n));return found.length===1?found[0]:null;}
 export function variantMatch(p,type){const n=normalize(type),aliases=[['كورمة','كورمات','corm'],['شتلة','شتلة صغيرة','baby plant'],['كتنج','cutting'],['مذر','نبتة أم','mother']];const group=aliases.find(g=>g.some(x=>normalize(x)===n))||[type];const found=p.variants.filter(v=>!v.hidden&&group.some(x=>normalize(x)===normalize(v.type)));return found.length===1?found[0]:null;}
-export async function operationId(uid,message,date){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(uid+'|'+date+'|'+normalize(message)));return 'assistant-'+Array.from(new Uint8Array(bytes),x=>x.toString(16).padStart(2,'0')).join('');}
+export async function operationId(uid,message,date){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(uid+'|'+date+'|'+normalize(message)));return Array.from(new Uint8Array(bytes),x=>x.toString(16).padStart(2,'0')).join('')+'-assistant';}
