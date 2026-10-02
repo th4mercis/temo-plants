@@ -9,3 +9,5 @@
 @media(max-width:359px){.catalog{grid-template-columns:1fr}.stats{grid-template-columns:1fr}.brand small{display:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;scroll-behavior:auto!important}}
 @media print{body>*{display:none!important}body>dialog[open]{display:block!important;position:static;width:100%;max-width:none;max-height:none;box-shadow:none;border:0;margin:0;padding:0}dialog .dialog-head,dialog .dialog-actions,dialog .no-print{display:none!important}dialog .dialog-form{padding:0}dialog::backdrop{background:white}.invoice{padding:0}table{font-size:11px}th,td{padding:8px}tr{break-inside:avoid}@page{size:A4;margin:15mm}}
+
+.receipt-preview{display:block;max-width:100%;height:auto;max-height:65vh;object-fit:contain}.receipt-preview[hidden]{display:none}.receipt-instructions{white-space:pre-wrap;overflow-wrap:anywhere}

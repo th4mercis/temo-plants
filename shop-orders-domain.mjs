@@ -23,4 +23,30 @@ export function approvalPlan(request,products,{shippingCharged,expires},now=new 
  plan.movements.forEach((m,i)=>writes['tp2_movements/'+id+'-web-'+i]={...m,id:id+'-web-'+i,orderId:id,date:order.date,at,by:'website-approval'});
  return {writes,order};
 }
-export function publicStatus(r){return {id:r.id,number:r.number,status:r.status,subtotal:r.subtotal,shippingCharged:r.shippingCharged??null,total:r.total??null,expires:r.expires||'',message:r.message||'',items:r.items.map(({name,type,qty,price})=>({name,type,qty,price}))};}
+export function publicStatus(r){return {id:r.id,number:r.number,status:r.status,subtotal:r.subtotal,shippingCharged:r.shippingCharged??null,total:r.total??null,expires:r.expires||'',message:r.message||'',paid:r.paid||0,fulfillment:r.fulfillment||'pending',tracking:r.tracking||'',carrier:r.carrier||'',paymentInstructions:r.paymentInstructions||'',receipt:r.receipt||null,items:r.items.map(({name,type,qty,price})=>({name,type,qty,price}))};}
+
+export function validateReceipt(raw,order){
+ assert(order&&['reserved','sold'].includes(order.status),'الطلب غير نشط.');
+ const amount=integerMoney(raw.amount);assert(amount>0&&amount<=order.total-order.paid,'المبلغ أكبر من المتبقي أو غير صالح.');
+ assert(/^[a-f0-9-]{36}$/i.test(raw.receiptId||''),'معرف الإيصال غير صالح.');
+ assert(typeof raw.image==='string'&&/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(raw.image),'صورة إيصال التحويل إلزامية (JPEG).');
+ const bytes=Buffer.from(raw.image.split(',')[1],'base64');
+ assert(bytes.length>=100&&bytes.length<=450000&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255&&bytes.at(-2)===255&&bytes.at(-1)===217,'الإيصال غير صالح أو يتجاوز الحجم المسموح.');
+ return {id:raw.receiptId,amount,image:raw.image};
+}
+export function receiptPaymentPlan(order,receipt,products,by,now=new Date()){
+ assert(receipt.status==='pending','تمت مراجعة الإيصال.');
+ assert(['reserved','sold'].includes(order.status),'الطلب غير نشط.');
+ integerMoney(receipt.amount);assert(receipt.amount>0&&receipt.amount<=order.total-order.paid,'تغير المتبقي؛ راجع الدفعات قبل اعتماد الإيصال.');
+ const o=structuredClone(order),writes={},date=localDate(now),at=now.toISOString(),op='receipt-'+receipt.id;
+ if(o.status==='reserved'){
+  const plan=planOrder(products,o,'fulfill');o.items=plan.items;o.cogs=plan.cogs;o.status='sold';o.date=date;
+  for(const p of plan.products){p.revision++;p.updatedAt=at;writes['tp2_products/'+p.id]=p;writes['tp2_publicProducts/'+p.id]=publicProduct(p);}
+  plan.movements.forEach((m,i)=>writes['tp2_movements/'+op+'-'+i]={...m,id:op+'-'+i,orderId:o.id,date,at,by});
+  if(o.shippingCost>0)writes['tp2_cash/'+op+'-shipping']={id:op+'-shipping',amount:o.shippingCost,direction:'out',category:'shipping',date,reference:o.id};
+ }
+ o.paid+=receipt.amount;o.pendingReceipt='';o.revision++;writes['tp2_orders/'+o.id]=o;
+ writes['tp2_cash/'+op]={id:op,amount:receipt.amount,direction:'in',category:'payment',date,reference:o.id};
+ writes['tp2_audit/'+op]={id:op,kind:'receipt-payment',details:o.id,amount:receipt.amount,by,at};
+ return {writes,order:o};
+}

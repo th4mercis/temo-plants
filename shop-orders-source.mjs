@@ -1,20 +1,44 @@
 import {createHash} from 'node:crypto';
-import {validateRequest,quoteRequest,approvalPlan,publicStatus} from '../../shop-orders-domain.mjs';
+import {validateRequest,quoteRequest,approvalPlan,publicStatus,validateReceipt,receiptPaymentPlan} from '../../shop-orders-domain.mjs';
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const reply=(statusCode,data)=>({statusCode,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},body:JSON.stringify(data)});
-let context;
+
 async function setup(){const [{initializeApp,cert,getApps},{getFirestore},{getAuth}]=await Promise.all([import('firebase-admin/app'),import('firebase-admin/firestore'),import('firebase-admin/auth')]);const c=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT||'{}');if(c.project_id!=='temo-plants')throw Error('config');const app=getApps().find(a=>a.name==='shop-temo')||initializeApp({credential:cert(c)},'shop-temo');return {db:getFirestore(app),auth:getAuth(app)};}
-export async function handler(event){
+export function createHandler(load=setup){let context;return async function handler(event){
  if(event.httpMethod!=='POST')return reply(405,{error:'استخدم نموذج الطلب.'});
- if((event.body||'').length>20000)return reply(413,{error:'الطلب كبير جداً.'});
+ if((event.body||'').length>650000)return reply(413,{error:'الطلب كبير جداً.'});
  const origin=event.headers?.origin;if(origin!=='https://temoplants.netlify.app')return reply(403,{error:'أرسل الطلب من موقع المتجر.'});
  let body;try{body=JSON.parse(event.body||'{}');}catch{return reply(400,{error:'طلب غير صالح.'});}
- try{context||=await setup();}catch{return reply(503,{error:'الطلبات غير متاحة مؤقتاً. أعد المحاولة لاحقاً.'});}
+ try{context||=await load();}catch{return reply(503,{error:'الطلبات غير متاحة مؤقتاً. أعد المحاولة لاحقاً.'});}
  const {db,auth}=context;
  try{
- if(['list','approve','reject'].includes(body.action)){
+ if(['list','approve','reject','receipt-view','receipt-review'].includes(body.action)){
   let user;try{const h=event.headers.authorization||'';user=await auth.verifyIdToken(h.replace(/^Bearer /,''),true);if((await db.doc('admins/'+user.uid).get()).data()?.active!==true)throw Error();}catch{return reply(403,{error:'سجّل الدخول بحساب مدير مخوّل.'});}
-  if(body.action==='list'){const s=await db.collection('shopRequests').where('status','==',body.status==='processed'?'approved':'pending').limit(100).get();return reply(200,{requests:s.docs.map(d=>{const {tokenHash,...r}=d.data();return r;})});}
+  if(body.action==='list'){
+   const s=await db.collection('shopRequests').orderBy('createdAt','desc').limit(100).get();
+   const requests=await Promise.all(s.docs.map(async d=>{const {tokenHash,...r}=d.data();const o=(await db.doc('tp2_orders/'+r.id).get()).data();if(o)Object.assign(r,{orderStatus:o.status,paid:o.paid,total:o.total,fulfillment:o.fulfillment});return r;}));return reply(200,{requests});
+  }
+  if(['receipt-view','receipt-review'].includes(body.action)){
+   if(!/^[a-f0-9-]{36}$/i.test(body.receiptId||''))throw Error('معرف الإيصال غير صالح.');
+   const rr=db.doc('shopReceipts/'+body.receiptId);
+   if(body.action==='receipt-view'){const r=(await rr.get()).data();if(!r)throw Error('الإيصال غير موجود.');return reply(200,{image:r.image,amount:r.amount,status:r.status});}
+   if(!['confirm','reject'].includes(body.decision))throw Error('قرار غير صالح.');
+   const result=await db.runTransaction(async tx=>{
+    const receipt=(await tx.get(rr)).data();if(!receipt)throw Error('الإيصال غير موجود.');
+    if(receipt.status!=='pending')return {status:receipt.status};
+    const ref=db.doc('shopRequests/'+receipt.orderId),request=(await tx.get(ref)).data(),o=(await tx.get(db.doc('tp2_orders/'+receipt.orderId))).data();
+    const at=new Date().toISOString();let reason=String(body.reason||'').trim().slice(0,500);
+    if(body.decision==='confirm'){
+     if(!o)throw Error('الطلب غير موجود.');
+     const ps=await Promise.all([...new Set(o.items.map(i=>i.productId))].map(id=>tx.get(db.doc('tp2_products/'+id))));
+     const plan=receiptPaymentPlan(o,receipt,ps.map(p=>p.data()),user.uid);for(const [path,value]of Object.entries(plan.writes))tx.set(db.doc(path),value);
+    }else if(!reason)throw Error('سبب رفض الإيصال مطلوب.');
+    receipt.status=body.decision==='confirm'?'confirmed':'rejected';receipt.reviewedAt=at;receipt.reviewedBy=user.uid;receipt.reason=reason;tx.set(rr,receipt);
+    if(body.decision==='reject'&&o){o.pendingReceipt='';o.revision++;tx.set(db.doc('tp2_orders/'+o.id),o);}
+    request.receipt={id:receipt.id,amount:receipt.amount,status:receipt.status,reason};request.updatedAt=at;tx.set(ref,request);
+    tx.set(db.doc('tp2_audit/'+receipt.id+'-review'),{id:receipt.id+'-review',kind:'receipt-review',details:receipt.orderId,decision:body.decision,reason,by:user.uid,at});return {status:receipt.status};
+   });return reply(200,result);
+  }
   if(!/^[a-f0-9-]{36}$/i.test(body.id||''))throw Error('معرف غير صالح.');
   const result=await db.runTransaction(async tx=>{const ref=db.doc('shopRequests/'+body.id),r=(await tx.get(ref)).data();if(!r)throw Error('الطلب غير موجود.');if(r.status!=='pending')return publicStatus(r);
    const at=new Date().toISOString();
@@ -23,13 +47,25 @@ export async function handler(event){
    const ids=[...new Set(r.items.map(i=>i.productId))];const snaps=await Promise.all(ids.map(id=>tx.get(db.doc('tp2_products/'+id))));const cr=db.doc('tp2_customers/phone-'+r.phone),customer=(await tx.get(cr)).data();
    const plan=approvalPlan(r,snaps.map(s=>s.data()),body);for(const [path,value]of Object.entries(plan.writes))tx.set(db.doc(path),value);
    if(!customer)tx.set(cr,{id:'phone-'+r.phone,name:r.name,phone:r.phone,city:r.city,notes:'',marketingConsent:r.marketingConsent,consentUpdatedAt:r.createdAt,revision:1,updatedAt:at});
-   r.status='approved';r.shippingCharged=body.shippingCharged;r.total=plan.order.total;r.expires=body.expires;r.updatedAt=at;r.message='تم تأكيد الطلب وحجزه. سنتواصل معك لترتيب الدفع.';tx.set(ref,r);tx.set(db.doc('tp2_audit/'+r.id+'-approve'),{id:r.id+'-approve',kind:'web-approve',details:r.number,by:user.uid,at});return publicStatus(r);
+   r.paymentInstructions=String(body.paymentInstructions||'').trim().slice(0,1500);r.status='approved';r.shippingCharged=body.shippingCharged;r.total=plan.order.total;r.expires=body.expires;r.updatedAt=at;r.message='تم تأكيد الطلب وحجزه. سنتواصل معك لترتيب الدفع.';tx.set(ref,r);tx.set(db.doc('tp2_audit/'+r.id+'-approve'),{id:r.id+'-approve',kind:'web-approve',details:r.number,by:user.uid,at});return publicStatus(r);
+  });return reply(200,result);
+ }
+ if(body.action==='receipt-submit'){
+  if(!/^[a-f0-9-]{36}$/i.test(body.id||'')||!/^[a-f0-9-]{36}$/i.test(body.token||''))throw Error('رابط المتابعة غير صالح.');
+  const result=await db.runTransaction(async tx=>{
+   const ref=db.doc('shopRequests/'+body.id),r=(await tx.get(ref)).data();if(!r||r.tokenHash!==hash(body.token))throw Error('رابط المتابعة غير صالح.');
+   const o=(await tx.get(db.doc('tp2_orders/'+body.id))).data();const receipt=validateReceipt(body,o),rr=db.doc('shopReceipts/'+receipt.id),old=(await tx.get(rr)).data();
+   if(old){if(old.orderId!==r.id||old.image!==receipt.image||old.amount!==receipt.amount)throw Error('معرف مكرر.');return {status:old.status};}
+   if(r.receipt?.status==='pending')throw Error('يوجد إيصال بانتظار المراجعة.');
+   const imageHash=hash(receipt.image);if((r.receiptHashes||[]).includes(imageHash))throw Error('سبق إرسال هذا الإيصال؛ اختر إيصال التحويل الجديد.');
+   if((r.receiptHashes||[]).length>=20)throw Error('وصلت لحد الإيصالات لهذا الطلب؛ تواصل مع المتجر.');
+   const at=new Date().toISOString();o.pendingReceipt=receipt.id;o.revision++;tx.set(db.doc('tp2_orders/'+o.id),o);tx.set(rr,{...receipt,orderId:r.id,status:'pending',createdAt:at});r.receiptHashes=[...(r.receiptHashes||[]),imageHash];r.receipt={id:receipt.id,amount:receipt.amount,status:'pending'};r.updatedAt=at;tx.set(ref,r);return {status:'pending'};
   });return reply(200,result);
  }
  if(body.action==='status'){
   if(!/^[a-f0-9-]{36}$/i.test(body.id||'')||!/^[a-f0-9-]{36}$/i.test(body.token||''))return reply(404,{error:'رابط المتابعة غير صالح.'});
   const r=(await db.doc('shopRequests/'+body.id).get()).data();if(!r||r.tokenHash!==hash(body.token))return reply(404,{error:'رابط المتابعة غير صالح.'});
-  const o=(await db.doc('tp2_orders/'+body.id).get()).data();if(o){r.items=o.items;r.subtotal=o.subtotal;r.status=o.status==='reserved'?'approved':o.status;r.expires=o.expires;r.total=o.total;r.shippingCharged=o.shippingCharged;if(o.status!=='reserved')r.message='';}return reply(200,publicStatus(r));
+  const o=(await db.doc('tp2_orders/'+body.id).get()).data();if(o){r.paid=o.paid;r.fulfillment=o.fulfillment;const shipment=(await db.doc('tp2_shipments/'+o.id).get()).data();r.tracking=shipment?.tracking||'';r.carrier=shipment?.carrier||'';r.items=o.items;r.subtotal=o.subtotal;r.status=o.status==='reserved'?'approved':o.status;r.expires=o.expires;r.total=o.total;r.shippingCharged=o.shippingCharged;if(o.status!=='reserved')r.message='';}return reply(200,publicStatus(r));
  }
  if(body.action!=='create')throw Error('عملية غير صالحة.');const input=validateRequest(body);
  const result=await db.runTransaction(async tx=>{const ref=db.doc('shopRequests/'+input.id),old=(await tx.get(ref)).data();if(old){if(old.tokenHash!==hash(input.token))throw Error('معرف مكرر.');return publicStatus(old);}
@@ -38,3 +74,6 @@ export async function handler(event){
  });return reply(200,result);
  }catch(e){return reply(e.status||400,{error:e.code?'تعذر تنفيذ العملية. أعد المحاولة.':e.message||'تعذر إرسال الطلب.'});}
 }
+
+}
+export const handler=createHandler();

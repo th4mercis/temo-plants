@@ -64,7 +64,7 @@ export async function createOrder(input,mode,op=D.id()){
 export async function orderAction(order,kind,extra={},op=D.id()){
   D.assert(['fulfill','cancel','return','payment','shipment'].includes(kind),'عملية غير معروفة.');
   const paths=[...new Set(order.items.map(i=>'products/'+i.productId))],date=D.dateValue(extra.date||D.localDate());
-  return store.atomic(['orders/'+order.id,'audit/'+op,...paths],docs=>{if(docs['audit/'+op])return {result:op};const o=docs['orders/'+order.id];D.assert(o&&o.revision===order.revision,'تغير الطلب. حدّث الصفحة وحاول مجدداً.');const writes={};
+  return store.atomic(['orders/'+order.id,'audit/'+op,...paths],docs=>{if(docs['audit/'+op])return {result:op};const o=docs['orders/'+order.id];D.assert(o&&o.revision===order.revision,'تغير الطلب. حدّث الصفحة وحاول مجدداً.');const writes={};if(kind==='payment')D.assert(!o.pendingReceipt,'يوجد إيصال بانتظار المراجعة؛ أكده أو ارفضه من طلبات الموقع قبل تسجيل دفعة يدوية.');
     // Payment or dispatch converts a reservation into an unpaid sale exactly once.
     if(o.status==='reserved'&&(kind==='payment'||(kind==='shipment'&&['shipped','delivered'].includes(extra.fulfillment)))){
       const plan=D.planOrder(paths.map(p=>docs[p]),o,'fulfill');Object.assign(writes,productWrites(plan.products));o.status='sold';o.date=date;o.items=plan.items;o.cogs=plan.cogs;
