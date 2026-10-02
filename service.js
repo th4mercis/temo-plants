@@ -137,3 +137,16 @@ export async function correctPurchaseCost(input,op=D.id()){
  return {writes,result:p.id};
  });
 }
+
+export async function correctOpeningCost(input,op=D.id()){
+ D.integerMoney(input.unitCost);D.assert(input.reason?.trim(),'اكتب سبب تحديد التكلفة.');
+ const initial=await store.get('products/'+input.productId);D.assert(initial&&initial.revision===input.productRevision,'تغيرت النبتة. أعد فتح النموذج.');
+ const [purchases,movements]=await Promise.all([store.list('purchases'),store.list('movements')]);
+ D.assert(!purchases.some(x=>x.productId===input.productId&&x.variantId===input.variantId)&&!movements.some(x=>x.productId===input.productId&&x.variantId===input.variantId&&['purchase','production'].includes(x.kind)),'هذا الصنف له شراء أو إنتاج مسجل. استخدم إجراء التكلفة الخاص بالعملية.');
+ return store.atomic(['products/'+input.productId,'audit/'+op],docs=>{
+ if(docs['audit/'+op])return {result:input.productId};const p=structuredClone(docs['products/'+input.productId]);D.assert(p&&!p.archived&&p.revision===input.productRevision,'تغيرت النبتة. أعد فتح النموذج.');const v=p.variants.find(v=>v.id===input.variantId);D.assert(v&&v.qty>0,'لا توجد كمية متبقية لتحديد تكلفتها.');
+ const before=D.stockValue(v),after=v.qty*input.unitCost;D.integerMoney(after);D.assert(after!==before,'لم تتغير التكلفة.');v.value=after;v.cost=input.unitCost;
+ const record={...audit(op,'opening-cost-correction',input.reason.trim()),productId:p.id,variantId:v.id,qty:v.qty,previousValue:before,value:after,unitCost:input.unitCost};
+ return {writes:{...productWrites([p]),['audit/'+op]:record,['movements/'+op]:{id:op,productId:p.id,variantId:v.id,kind:'opening-cost-correction',qty:0,reason:input.reason.trim()+' · قيمة المخزون: '+D.formatMoney(before)+' ← '+D.formatMoney(after),date:D.localDate(),at:now(),by:store.uid()}},result:p.id};
+ });
+}
