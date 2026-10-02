@@ -9,14 +9,14 @@ export function marketingPage(state){
  syncChoices=()=>{const s=choices.querySelector('select'),value=s.value,rows=saleEntries(currentState.products).filter(x=>x.status==='live');s.replaceChildren(el('option',{value:''},'— اختر عرضاً منشوراً —'),...rows.map(({p,v})=>el('option',{value:p.id+'|'+v.id},p.name+' — '+variantLabel(v.type))));s.value=value;};
  const format=select('مقاس التصميم','marketing-format',[['post','بوست · 1080 × 1350'],['story','ستوري · 1080 × 1920']]);
  const headline=field('عنوان قصير على الصورة','marketing-title','text','متاح الآن',{maxlength:45});
- const caption=field('نص المنشور — يمكنك تعديله أو لصق نص كتبناه هنا','marketing-caption','textarea','',{rows:8});
+ const caption=field('إعلان تيليجرام — أكمل الحجم والحالة والتسليم قبل النشر','marketing-caption','textarea','',{rows:14});
  const file=field('صورة بديلة للتصميم فقط (اختياري)','marketing-file','file','',{accept:'image/*'});
  const canvas=el('canvas',{width:1080,height:1350,role:'img','aria-label':'معاينة تصميم المنشور',class:'marketing-canvas'});
  const status=el('p',{role:'status',class:'hint'},'اختر عرضاً لبدء التصميم.');let photo=null,logo=null,ready=false,sequence=0;
  const selected=()=>saleEntries(currentState.products).find(x=>x.status==='live'&&x.p.id+'|'+x.v.id===choices.querySelector('select').value);
  const input=caption.querySelector('textarea');
  const linkFor=p=>'https://temoplants.netlify.app/shop?product='+encodeURIComponent(p.id);
- function defaultText(){const x=selected();if(!x)return;input.value=`متاح الآن من Temo_plants\n${x.p.name}\n${variantLabel(x.v.type)}\nسعر القطعة: ${formatMoney(x.v.price)}\n\nللتفاصيل والطلب:\n${linkFor(x.p)}\n\n#Temo_plants #نباتات`;}
+ function defaultText(){const x=selected();if(!x)return;input.value=`نموذج بيع نبات\n\n🌱 اسم النبات: ${x.p.name} — ${variantLabel(x.v.type)}\n🔢 العدد: 1\n📏 الحجم: [أدخل الحجم أو الارتفاع التقريبي]\n\n✅ الحالة العامة: [أدخل حالة القطعة]\n💰 السعر: ${formatMoney(x.v.price)} للقطعة\n📍 المدينة: مكة\n🚚 طريقة التسليم (شحن): [أدخل التفاصيل]\n\n📷 صورة النبات والتفاصيل:\n${linkFor(x.p)}`;}
  function text(ctx,value,y,size=42,max=940){ctx.font=`bold ${size}px Arial`;ctx.fillStyle='#171717';ctx.textAlign='center';ctx.direction='inherit';const words=value.split(/\s+/);let line='',lines=[];for(const w of words){if(ctx.measureText(line+' '+w).width>max&&line){lines.push(line);line=w;}else line+=(line?' ':'')+w;}lines.push(line);for(const l of lines){ctx.fillText(l,540,y);y+=size*1.3;}return y;}
  function draw(){const x=selected();ready=false;download.disabled=true;const h=format.querySelector('select').value==='story'?1920:1350;canvas.height=h;const c=canvas.getContext('2d');c.fillStyle='#faf7f3';c.fillRect(0,0,1080,h);if(!x||!photo)return;
  c.fillStyle='#ae0000';c.fillRect(0,0,1080,14);if(logo)c.drawImage(logo,850,45,145,145);c.font='bold 48px Arial';c.textAlign='left';c.fillStyle='#ae0000';c.fillText('Temo_plants',70,112);c.font='28px Arial';c.fillStyle='#555';c.fillText('@temo_plants',70,155);
