@@ -1,4 +1,4 @@
-import {genusField,readGenus} from './catalog-fields.js';
+import {genusField,readGenus,genera} from './catalog-fields.js';
 import * as D from './domain.js';
 import * as api from './service.js';
 import {el,field,select,check,dialog} from './ui.js';
@@ -12,6 +12,16 @@ export function newPlant(){
   const type=select('كيف وصلت النبتة إليك؟','kind',[['purchase','اشتريتها الآن — تسجيل المبلغ المدفوع'],['opening','موجودة لدي سابقاً — دون تسجيل دفع جديد']]);
   const summary=el('p',{class:'hint full',role:'status'});
   const content=el('div',{class:'form-grid'},field('اسم النبتة','name','text','',{required:'',maxlength:'200'}),genusField(),field('الصنف / شكل النبتة','type','text','شتلة',{required:'',maxlength:'100'}),type,quantity(),number('تكلفة شراء القطعة الواحدة (ر.س)','cost'),number('سعر بيع القطعة الواحدة (ر.س)','price'),check('متاح للبيع — عرض النبتة في المتجر','sell',false),details(field('المورد','supplier','text','',{maxlength:'500'}),number('شحن وجمارك الدفعة كاملة (ر.س)','landed'),field('تاريخ الاستلام','date','date',D.localDate(),{required:''}),field('ملاحظات داخلية','notes','textarea','',{maxlength:'4000'})),summary,el('p',{class:'hint full'},'ستُحفظ النبتة والكمية والتكلفة معاً. تظهر في المتجر عند اختيار «متاح للبيع»؛ وإلا تبقى مسودة. أضف الصورة والوصف من «تعديل / عرض للبيع».'));
+  // Only the new-plant form receives a genus prefix; saved plants are untouched.
+  const plantName=content.querySelector('[name=name]'),genusChoice=content.querySelector('[name=genusChoice]');
+  const prefixName=()=>{
+    let suffix=plantName.value.trimStart();
+    const known=new RegExp('^(?:'+genera.map(([en])=>en).join('|')+')(?:\\s+|$)','i');
+    while(known.test(suffix))suffix=suffix.replace(known,'');
+    const genus=genusChoice.value;
+    plantName.value=genus==='other'?suffix:genus+' '+suffix;
+  };
+  genusChoice.addEventListener('change',prefixName);prefixName();
   function update(){const q=Number(content.querySelector('[name=qty]').value),c=Number(content.querySelector('[name=cost]').value),s=Number(content.querySelector('[name=landed]').value);summary.textContent=type.querySelector('select').value==='purchase'?'سيُسجّل دفع بقيمة '+D.formatMoney(Math.round((q*c+s)*100))+' وتضاف الكمية للمخزون. لا تسجّل المبلغ مرة أخرى في المصاريف.':'سيضاف المخزون بتكلفته فقط، دون تسجيل دفعة نقدية جديدة.';}
   content.addEventListener('input',update);content.addEventListener('change',update);update();
   dialog('إضافة نبتة ومخزونها',content,async f=>{
