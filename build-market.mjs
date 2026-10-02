@@ -1,5 +1,5 @@
 import {mkdir,copyFile} from 'node:fs/promises';
-const files=["admin.js","assistant-domain.js","assistant-ui.js","brand-leaf.jpeg","brand-logo.jpeg","brand-pattern.jpeg","brand.css","catalog-fields.js","config.js","customer-domain.js","customers.js","domain.js","favicon.svg","image-upload.js","index.html","market-domain.js","market-ui.js","migration.js","plant-hub.js","plant-workflows.js","robots.txt","sale-catalog.js","service.js","shop-checkout.js","shop-layout.css","shop-requests.js","shop.html","shop.js","store.js","storefront-content.js","styles.css","temo-plants.html","ui.js","_headers","_redirects"];
+const files=["admin.js","assistant-domain.js","assistant-ui.js","brand-leaf.jpeg","brand-logo.jpeg","brand-pattern.jpeg","brand.css","catalog-fields.js","config.js","customer-domain.js","customers.js","domain.js","favicon.svg","image-upload.js","index.html","market-domain.js","market-ui.js","marketing.js","migration.js","plant-hub.js","plant-workflows.js","robots.txt","sale-catalog.js","service.js","shop-checkout.js","shop-layout.css","shop-requests.js","shop.html","shop.js","store.js","storefront-content.js","styles.css","temo-plants.html","ui.js","_headers","_redirects"];
 await mkdir('dist',{recursive:true});
 for(const file of files)await copyFile(file,'dist/'+file);
 await mkdir('netlify/functions',{recursive:true});
