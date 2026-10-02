@@ -1,0 +1,1 @@
+export function effectivePurchase(p,audits){const changes=audits.filter(a=>a.kind==='purchase-cost-correction'&&a.purchaseId===p.id).sort((a,b)=>(a.correctionVersion||0)-(b.correctionVersion||0));const last=changes.at(-1);return last?{...p,unitCost:last.unitCost,landed:last.landed,total:last.total,correctionVersion:last.correctionVersion}:{...p,correctionVersion:0};}

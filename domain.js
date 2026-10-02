@@ -49,6 +49,6 @@ export function totals({orders=[],expenses=[],cash=[]},from,to){const within=x=>
   const revenue=sales.reduce((s,o)=>s+o.total,0)-returns.reduce((s,o)=>s+o.total,0);
   const cogs=sales.reduce((s,o)=>s+o.cogs,0)-returns.filter(o=>o.restock).reduce((s,o)=>s+o.cogs,0);
   const shipping=sales.reduce((s,o)=>s+o.shippingCost,0),operating=expenses.filter(within).reduce((s,e)=>s+e.amount,0);
-  const incoming=cash.filter(x=>within(x)&&x.direction==='in').reduce((s,x)=>s+x.amount,0),outgoing=cash.filter(x=>within(x)&&x.direction==='out').reduce((s,x)=>s+x.amount,0);
+  const incoming=cash.filter(x=>within(x)&&x.direction==='in'&&x.category!=='purchase-correction').reduce((s,x)=>s+x.amount,0),outgoing=cash.filter(x=>within(x)&&(x.direction==='out'||x.category==='purchase-correction')).reduce((s,x)=>s+(x.direction==='out'?x.amount:-x.amount),0);
   return {revenue,cogs,shipping,operating,profit:revenue-cogs-shipping-operating,incoming,outgoing,flow:incoming-outgoing,due:orders.filter(o=>o.status==='sold').reduce((s,o)=>s+o.total-o.paid,0)};
 }

@@ -1,3 +1,4 @@
+import {effectivePurchase} from './purchase-cost.js';
 import {phoneNumber} from './customer-domain.js';
 import * as D from './domain.js';
 import * as store from './store.js';
@@ -115,5 +116,24 @@ export async function appendOrderItems(order,items,op=D.id()){
   D.assert(o.items.length<=20,'الحد الأقصى 20 صنفاً في الطلب.');o.subtotal=o.items.reduce((s,i)=>s+i.qty*i.price,0);o.total=o.subtotal+o.shippingCharged;o.cogs=o.items.reduce((s,i)=>s+(i.costValue??i.cost*i.qty),0);D.integerMoney(o.total);o.revision++;
   const writes={...productWrites(plan.products),['orders/'+o.id]:o,['audit/'+op]:audit(op,'order-items-add',o.number)};
   plan.movements.forEach((m,i)=>writes['movements/'+op+'-'+i]={...m,id:op+'-'+i,orderId:o.id,date:o.date,at:now(),by:store.uid()});return {writes,result:o.id};
+ });
+}
+
+// Append-only correction: preserve the original receipt and payment; never change quantities.
+export async function correctPurchaseCost(input,op=D.id()){
+ D.integerMoney(input.unitCost);D.integerMoney(input.landed);D.assert(input.reason?.trim(),'اكتب سبب تصحيح التكلفة.');
+ const p=await store.get('products/'+input.productId);D.assert(p&&p.revision===input.productRevision,'تغيرت النبتة. أعد فتح التصحيح.');
+ const [movements,orders,audits]=await Promise.all([store.list('movements'),store.list('orders'),store.list('audit')]);
+ D.assert(!movements.some(m=>m.productId===p.id&&m.variantId===input.variantId&&!['purchase','opening','production','reserve','cancel','cost-correction'].includes(m.kind))&&!orders.some(o=>['sold','returned'].includes(o.status)&&o.items.some(i=>i.productId===p.id&&i.variantId===input.variantId)),'سبق بيع أو إتلاف كمية من هذا الصنف. تصحيحها يحتاج إعادة احتساب تكلفة المباع، وهو غير متاح في هذا الإجراء.');
+ const path='purchases/'+input.purchaseId;
+ return store.atomic([path,'products/'+p.id,'audit/'+op],docs=>{
+ if(docs['audit/'+op])return {result:p.id};const original=docs[path],product=structuredClone(docs['products/'+p.id]);
+ D.assert(original&&original.productId===p.id&&original.variantId===input.variantId,'عملية الشراء غير موجودة.');D.assert(product.revision===input.productRevision,'تغيرت البيانات. أعد فتح التصحيح.');
+ const old=effectivePurchase(original,audits);D.assert(old.correctionVersion===input.correctionVersion,'تم تصحيح العملية سابقاً. أعد فتحها.');
+ const total=original.qty*input.unitCost+input.landed;D.integerMoney(total);const delta=total-old.total;D.assert(delta!==0,'لم تتغير التكلفة الإجمالية.');
+ const v=product.variants.find(v=>v.id===original.variantId);D.assert(v&&v.qty>0,'لا توجد كمية لتحديث تكلفتها.');const value=D.stockValue(v)+delta;D.integerMoney(value);v.value=value;v.cost=Math.round(value/v.qty);
+ const record={...audit(op,'purchase-cost-correction',input.reason.trim()),purchaseId:original.id,productId:p.id,variantId:v.id,unitCost:input.unitCost,landed:input.landed,total,previousTotal:old.total,delta,correctionVersion:old.correctionVersion+1};
+ const writes={...productWrites([product]),['audit/'+op]:record,['movements/'+op]:{id:op,productId:p.id,variantId:v.id,kind:'cost-correction',qty:0,reason:input.reason.trim(),date:D.localDate(),at:now(),by:store.uid()},['cash/'+op]:{id:op,direction:delta>0?'out':'in',category:'purchase-correction',amount:Math.abs(delta),date:original.date,reference:original.id}};
+ return {writes,result:p.id};
  });
 }
