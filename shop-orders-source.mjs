@@ -11,8 +11,21 @@ export function createHandler(load=setup){let context;return async function hand
  let body;try{body=JSON.parse(event.body||'{}');}catch{return reply(400,{error:'طلب غير صالح.'});}
  try{context||=await load();}catch{return reply(503,{error:'الطلبات غير متاحة مؤقتاً. أعد المحاولة لاحقاً.'});}
  const {db,auth}=context;
+ let customer=null;
+ async function verifiedCustomer(){if(customer)return customer;try{const h=event.headers.authorization||'';const u=await auth.verifyIdToken(h.replace(/^Bearer /,''),true);if(!u.email||u.email_verified!==true)throw Error();customer=u;return u;}catch{const e=Error('سجّل الدخول بحساب العميل وأكد بريدك الإلكتروني.');e.status=401;throw e;}}
+ async function mayRead(r){if(!r)return false;if(r.customerUid){try{return (await verifiedCustomer()).uid===r.customerUid;}catch{return false;}}return /^[a-f0-9-]{36}$/i.test(body.token||'')&&r.tokenHash===hash(body.token);}
+ async function statusFor(r){const o=(await db.doc('tp2_orders/'+r.id).get()).data();if(o){r.paid=o.paid;r.fulfillment=o.fulfillment;const shipment=(await db.doc('tp2_shipments/'+o.id).get()).data();r.tracking=shipment?.tracking||'';r.carrier=shipment?.carrier||'';r.items=o.items;r.subtotal=o.subtotal;r.status=o.status==='reserved'?'approved':o.status;r.expires=o.expires;r.total=o.total;r.shippingCharged=o.shippingCharged;if(o.status!=='reserved')r.message='';}return publicStatus(r);}
+
  try{
- if(['list','approve','reject','receipt-view','receipt-review'].includes(body.action)){
+ if(body.action==='my-orders'){
+  const u=await verifiedCustomer();const rows=await db.collection('shopRequests').where('customerUid','==',u.uid).limit(100).get();
+  const requests=await Promise.all(rows.docs.map(async d=>{const r=d.data();return {...await statusFor(r),createdAt:r.createdAt};}));requests.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));return reply(200,{requests});
+ }
+ if(body.action==='claim'){
+  const u=await verifiedCustomer();if(!/^[a-f0-9-]{36}$/i.test(body.id||'')||!/^[a-f0-9-]{36}$/i.test(body.token||''))throw Error('رابط المتابعة غير صالح.');
+  await db.runTransaction(async tx=>{const ref=db.doc('shopRequests/'+body.id),r=(await tx.get(ref)).data();if(!r||r.tokenHash!==hash(body.token)||(r.customerUid&&r.customerUid!==u.uid))throw Error('تعذر ربط الطلب بهذا الحساب.');r.customerUid=u.uid;r.customerEmail=u.email;r.updatedAt=new Date().toISOString();tx.set(ref,r);});return reply(200,{linked:true});
+ }
+ if(['list' ,'approve','reject','receipt-view','receipt-review'].includes(body.action)){
   let user;try{const h=event.headers.authorization||'';user=await auth.verifyIdToken(h.replace(/^Bearer /,''),true);if((await db.doc('admins/'+user.uid).get()).data()?.active!==true)throw Error();}catch{return reply(403,{error:'سجّل الدخول بحساب مدير مخوّل.'});}
   if(body.action==='list'){
    const s=await db.collection('shopRequests').orderBy('createdAt','desc').limit(100).get();
@@ -51,9 +64,9 @@ export function createHandler(load=setup){let context;return async function hand
   });return reply(200,result);
  }
  if(body.action==='receipt-submit'){
-  if(!/^[a-f0-9-]{36}$/i.test(body.id||'')||!/^[a-f0-9-]{36}$/i.test(body.token||''))throw Error('رابط المتابعة غير صالح.');
+  if(!/^[a-f0-9-]{36}$/i.test(body.id||''))throw Error('رابط المتابعة غير صالح.');
   const result=await db.runTransaction(async tx=>{
-   const ref=db.doc('shopRequests/'+body.id),r=(await tx.get(ref)).data();if(!r||r.tokenHash!==hash(body.token))throw Error('رابط المتابعة غير صالح.');
+   const ref=db.doc('shopRequests/'+body.id),r=(await tx.get(ref)).data();if(!await mayRead(r))throw Error('سجّل الدخول بالحساب صاحب الطلب أو افتح رابط المتابعة القديم الصحيح.');
    const o=(await tx.get(db.doc('tp2_orders/'+body.id))).data();const receipt=validateReceipt(body,o),rr=db.doc('shopReceipts/'+receipt.id),old=(await tx.get(rr)).data();
    if(old){if(old.orderId!==r.id||old.image!==receipt.image||old.amount!==receipt.amount)throw Error('معرف مكرر.');return {status:old.status};}
    if(r.receipt?.status==='pending')throw Error('يوجد إيصال بانتظار المراجعة.');
@@ -63,14 +76,14 @@ export function createHandler(load=setup){let context;return async function hand
   });return reply(200,result);
  }
  if(body.action==='status'){
-  if(!/^[a-f0-9-]{36}$/i.test(body.id||'')||!/^[a-f0-9-]{36}$/i.test(body.token||''))return reply(404,{error:'رابط المتابعة غير صالح.'});
-  const r=(await db.doc('shopRequests/'+body.id).get()).data();if(!r||r.tokenHash!==hash(body.token))return reply(404,{error:'رابط المتابعة غير صالح.'});
-  const o=(await db.doc('tp2_orders/'+body.id).get()).data();if(o){r.paid=o.paid;r.fulfillment=o.fulfillment;const shipment=(await db.doc('tp2_shipments/'+o.id).get()).data();r.tracking=shipment?.tracking||'';r.carrier=shipment?.carrier||'';r.items=o.items;r.subtotal=o.subtotal;r.status=o.status==='reserved'?'approved':o.status;r.expires=o.expires;r.total=o.total;r.shippingCharged=o.shippingCharged;if(o.status!=='reserved')r.message='';}return reply(200,publicStatus(r));
+  if(!/^[a-f0-9-]{36}$/i.test(body.id||''))return reply(404,{error:'الطلب غير متاح.'});
+  const r=(await db.doc('shopRequests/'+body.id).get()).data();if(!await mayRead(r))return reply(403,{error:'سجّل الدخول بالحساب صاحب الطلب أو افتح رابط المتابعة القديم الصحيح.'});
+  return reply(200,await statusFor(r));
  }
- if(body.action!=='create')throw Error('عملية غير صالحة.');const input=validateRequest(body);
- const result=await db.runTransaction(async tx=>{const ref=db.doc('shopRequests/'+input.id),old=(await tx.get(ref)).data();if(old){if(old.tokenHash!==hash(input.token))throw Error('معرف مكرر.');return publicStatus(old);}
+ if(body.action!=='create')throw Error('عملية غير صالحة.');const owner=await verifiedCustomer();const input=validateRequest(body);
+ const result=await db.runTransaction(async tx=>{const ref=db.doc('shopRequests/'+input.id),old=(await tx.get(ref)).data();if(old){if(old.customerUid!==owner.uid||old.tokenHash!==hash(input.token))throw Error('معرف مكرر.');return publicStatus(old);}
   const ip=event.headers['x-nf-client-connection-ip'];if(!ip)throw Error('تعذر التحقق من الطلب.');const day=new Date().toISOString().slice(0,10);const rateRefs=['ip-'+hash(ip),'phone-'+hash(input.phone)].map(k=>db.doc('shopRequestLimits/'+day+'-'+k));const rates=await Promise.all(rateRefs.map(r=>tx.get(r)));if(rates.some(s=>(s.data()?.count||0)>=10)){const e=Error('وصلت للحد اليومي للطلبات. حاول لاحقاً.');e.status=429;throw e;}
-  const ids=[...new Set(input.items.map(i=>i.productId))],ps=await Promise.all(ids.map(id=>tx.get(db.doc('tp2_products/'+id))));const quoted=quoteRequest(input,ps.map(s=>s.data()));const {token,...clean}=input;const at=new Date().toISOString();const r={...clean,...quoted,tokenHash:hash(token),number:'WEB-'+input.id.slice(0,8).toUpperCase(),status:'pending',shippingCharged:null,total:null,createdAt:at,updatedAt:at};tx.set(ref,r);rateRefs.forEach((ref,i)=>tx.set(ref,{count:(rates[i].data()?.count||0)+1,expiresAt:new Date(Date.now()+172800000)}));return publicStatus(r);
+  const ids=[...new Set(input.items.map(i=>i.productId))],ps=await Promise.all(ids.map(id=>tx.get(db.doc('tp2_products/'+id))));const quoted=quoteRequest(input,ps.map(s=>s.data()));const {token,...clean}=input;const at=new Date().toISOString();const r={...clean,...quoted,customerUid:owner.uid,customerEmail:owner.email,tokenHash:hash(token),number:'WEB-'+input.id.slice(0,8).toUpperCase(),status:'pending',shippingCharged:null,total:null,createdAt:at,updatedAt:at};tx.set(ref,r);rateRefs.forEach((ref,i)=>tx.set(ref,{count:(rates[i].data()?.count||0)+1,expiresAt:new Date(Date.now()+172800000)}));return publicStatus(r);
  });return reply(200,result);
  }catch(e){return reply(e.status||400,{error:e.code?'تعذر تنفيذ العملية. أعد المحاولة.':e.message||'تعذر إرسال الطلب.'});}
 }
