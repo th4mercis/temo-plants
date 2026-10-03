@@ -7,7 +7,7 @@ async function setup(){const [{initializeApp,cert,getApps},{getFirestore},{getAu
 export function createHandler(load=setup){let context;return async function handler(event){
  if(event.httpMethod!=='POST')return reply(405,{error:'استخدم نموذج الطلب.'});
  if((event.body||'').length>650000)return reply(413,{error:'الطلب كبير جداً.'});
- const origin=event.headers?.origin;if(origin!=='https://temoplants.netlify.app')return reply(403,{error:'أرسل الطلب من موقع المتجر.'});
+ const origin=event.headers?.origin;if(!['https://temoplants.netlify.app','https://temoplants.com','https://www.temoplants.com'].includes(origin))return reply(403,{error:'أرسل الطلب من موقع المتجر.'});
  let body;try{body=JSON.parse(event.body||'{}');}catch{return reply(400,{error:'طلب غير صالح.'});}
  try{context||=await load();}catch{return reply(503,{error:'الطلبات غير متاحة مؤقتاً. أعد المحاولة لاحقاً.'});}
  const {db,auth}=context;
