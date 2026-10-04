@@ -61,6 +61,20 @@ export async function createOrder(input,mode,op=D.id()){
     return {writes,result:op};
   });
 }
+export async function discountOrder(order,discounts,op=D.id()){
+ return store.atomic(['orders/'+order.id,'audit/'+op],docs=>{
+  if(docs['audit/'+op])return {result:order.id};
+  const o=docs['orders/'+order.id];D.assert(o&&o.revision===order.revision,'تغير الطلب؛ افتحه مجدداً قبل تعديل الخصم.');
+  D.assert(['reserved','sold'].includes(o.status),'لا يمكن تعديل خصم طلب ملغي أو مرتجع.');
+  D.assert(!o.pendingReceipt,'راجع إيصال التحويل المعلّق قبل تعديل الخصم.');
+  D.assert(Array.isArray(discounts)&&discounts.length===o.items.length,'بنود الخصم لا تطابق الطلب.');
+  const before=o.items.map(i=>({price:i.price,originalPrice:i.originalPrice??i.price}));
+  o.items=o.items.map((i,n)=>{const originalPrice=D.integerMoney(i.originalPrice??i.price),discount=D.integerMoney(discounts[n]);D.assert(discount<=originalPrice,'الخصم أكبر من سعر القطعة.');return {...i,originalPrice,price:originalPrice-discount};});
+  o.subtotal=D.integerMoney(o.items.reduce((s,i)=>s+i.qty*i.price,0));o.total=D.integerMoney(o.subtotal+o.shippingCharged);
+  D.assert(o.total>=o.paid,'الإجمالي بعد الخصم أقل من المبلغ المستلم؛ يلزم معالجة الاسترداد أولاً.');
+  o.revision++;return {writes:{['orders/'+o.id]:o,['audit/'+op]:audit(op,'order-discount',{orderId:o.id,before,after:o.items.map(i=>({price:i.price,originalPrice:i.originalPrice}))})},result:o.id};
+ });
+}
 export async function orderAction(order,kind,extra={},op=D.id()){
   D.assert(['fulfill','cancel','return','payment','shipment'].includes(kind),'عملية غير معروفة.');
   const paths=[...new Set(order.items.map(i=>'products/'+i.productId))],date=D.dateValue(extra.date||D.localDate());

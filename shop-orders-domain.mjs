@@ -23,7 +23,7 @@ export function approvalPlan(request,products,{shippingCharged,expires},now=new 
  plan.movements.forEach((m,i)=>writes['tp2_movements/'+id+'-web-'+i]={...m,id:id+'-web-'+i,orderId:id,date:order.date,at,by:'website-approval'});
  return {writes,order};
 }
-export function publicStatus(r){return {id:r.id,number:r.number,status:r.status,subtotal:r.subtotal,shippingCharged:r.shippingCharged??null,total:r.total??null,expires:r.expires||'',message:r.message||'',paid:r.paid||0,fulfillment:r.fulfillment||'pending',tracking:r.tracking||'',carrier:r.carrier||'',paymentInstructions:r.paymentInstructions||'',receipt:r.receipt||null,items:r.items.map(({name,type,qty,price})=>({name,type,qty,price}))};}
+export function publicStatus(r){return {id:r.id,number:r.number,status:r.status,subtotal:r.subtotal,shippingCharged:r.shippingCharged??null,total:r.total??null,expires:r.expires||'',message:r.message||'',paid:r.paid||0,fulfillment:r.fulfillment||'pending',tracking:r.tracking||'',carrier:r.carrier||'',paymentInstructions:r.paymentInstructions||'',receipt:r.receipt||null,items:r.items.map(({name,type,qty,price,originalPrice})=>({name,type,qty,price,originalPrice:originalPrice??price}))};}
 
 export function validateReceipt(raw,order){
  assert(order&&['reserved','sold'].includes(order.status),'الطلب غير نشط.');
