@@ -14,7 +14,7 @@ export function createHandler(load=setup){let runtime;return async event=>{
  if(!['https://temoplants.com','https://www.temoplants.com','https://temoplants.netlify.app'].includes(event.headers?.origin))return reply(403,{error:'افتح لوحة الإدارة من موقع المتجر.'});
  let body;
  try{body=parseBody(event,4_000_000);const shape=arities[body.action];if(!Object.hasOwn(arities,body.action)||!Array.isArray(body.args)||body.args.length<shape[0]||body.args.length>shape[1]||!body.args[0]||typeof body.args[0]!=='object'||Array.isArray(body.args[0]))throw new PublicError('عملية غير صالحة.');}catch(e){return reply(400,{error:'عملية غير صالحة.'});}
- let rt;try{runtime||=await load();rt=runtime;}catch{return reply(503,{error:'خدمة الحفظ غير متاحة مؤقتاً.'});}
+ let rt;try{runtime||=await load();rt=runtime;}catch(e){console.error(JSON.stringify({event:'admin-setup-failed',code:e?.code||'config',kind:e?.name||'Error',hasCredential:!!process.env.FIREBASE_SERVICE_ACCOUNT,node:process.version}));return reply(503,{error:'خدمة الحفظ غير متاحة مؤقتاً.'});}
  let user;
  try{const token=event.headers.authorization||'';if(!token.startsWith('Bearer '))throw Error();user=await rt.auth.verifyIdToken(token.slice(7),true);if((await rt.db.doc('admins/'+user.uid).get()).data()?.active!==true)throw Error();}catch{return reply(403,{error:'سجّل الدخول بحساب مدير مخوّل.'});}
  try{
