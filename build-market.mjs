@@ -1,9 +1,23 @@
-import {mkdir,copyFile} from 'node:fs/promises';
-const files=["admin.js","unified-orders.js","assistant-domain.js","assistant-ui.js","brand-leaf.jpeg","brand-logo.jpeg","brand-pattern.jpeg","brand.css","catalog-fields.js","config.js","customer-account.js","customer-domain.js","customers.js","domain.js","favicon.svg","image-upload.js","index.html","market-domain.js","market-ui.js","marketing.css","marketing.js","migration.js","plant-hub.js","plant-workflows.js","purchase-cost.js","robots.txt","sale-catalog.js","service.js","shop-checkout.js","shop-layout.css","shop-requests.js","shop.html","shop.js","store.js","storefront-content.js","styles.css","temo-plants.html","ui.js","_headers","_redirects"];
-await mkdir('dist',{recursive:true});
-for(const file of files)await copyFile(file,'dist/'+file);
+import {mkdir,copyFile,readFile,stat,rm} from 'node:fs/promises';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+const files=["admin.js","assistant-domain.js","assistant-ui.js","brand-leaf.jpeg","brand-logo.jpeg","brand-pattern.jpeg","brand.css","catalog-fields.js","config.js","customer-account.js","customer-domain.js","customers.js","domain.js","favicon.svg","image-upload.js","index.html","market-domain.js","market-ui.js","marketing.css","marketing.js","migration-core.js","migration.js","plant-hub.js","plant-workflows.js","purchase-cost.js","robots.txt","sale-catalog.js","service-core.js","service.js","shop-checkout.js","shop-layout.css","shop-requests.js","shop.html","shop.js","store.js","storefront-content.js","styles.css","temo-plants.html","ui.js","unified-orders.js","_headers","_redirects"];
+const target=path.resolve('dist');
+if(target!==path.join(process.cwd(),'dist'))throw Error('Unsafe output');
+await rm(target,{recursive:true,force:true});
+await mkdir(target,{recursive:true});
+for(const file of files)await copyFile(file,path.join(target,file));
+await mkdir('dist/assets',{recursive:true});
+for(const file of ["brand-leaf.jpeg","brand-logo.jpeg","brand-pattern.jpeg"])await copyFile(file,'dist/assets/'+file);
 await mkdir('netlify/functions',{recursive:true});
-await copyFile('market-function-source.mjs','netlify/functions/market-estimate.mjs');
-await copyFile('shop-orders-source.mjs','netlify/functions/shop-orders.mjs');
-await copyFile('assistant-source.mjs','netlify/functions/assistant.mjs');
-console.log('Built static site and private market function.');
+for(const [name,file]of Object.entries({"market-estimate":"market-function-source.mjs","shop-orders":"shop-orders-source.mjs","assistant":"assistant-source.mjs","admin-commands":"admin-commands-source.mjs"}))await copyFile(file,'netlify/functions/'+name+'.mjs');
+for(const file of files.filter(f=>f.endsWith('.js'))){
+ const source=await readFile('dist/'+file,'utf8');
+ for(const match of source.matchAll(/(?:from\s*|import\s*\()(['"])(\.\/?[^'"]+)\1/g)){
+  const imported=path.resolve('dist',path.dirname(file),match[2]);
+  if(!imported.startsWith(target+path.sep))throw Error('Private import: '+file);
+  await stat(imported);
+ }
+}
+execFileSync(process.execPath,['--test',...["deploy-security.test.mjs","deploy-customer-accounts.test.mjs","deploy-receipts.test.mjs","deploy-domain.test.mjs"]],{stdio:'inherit'});
+console.log('Verified build: public imports and backend security regression tests.');

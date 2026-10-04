@@ -39,3 +39,13 @@ export async function uploadImage(file){
 }
 
 export const marketToken=()=>auth.currentUser.getIdToken();
+
+export async function command(action,args){
+  const response=await fetch('/.netlify/functions/admin-commands',{
+    method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await marketToken()},
+    body:JSON.stringify({action,args}),signal:AbortSignal.timeout(55000)
+  });
+  const data=await response.json().catch(()=>({error:'تعذر الاتصال بالخدمة. أعد المحاولة بنفس النموذج.'}));
+  if(!response.ok)throw new Error(data.error||'تعذر حفظ العملية.');
+  return data.result;
+}
