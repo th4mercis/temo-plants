@@ -8,6 +8,7 @@ const endpoint='/.netlify/functions/shop-orders';
 export async function orderApi(data,admin=false){
  if(store.demo){
   if(data.action.startsWith('receipt-'))throw Error('رفع الإيصالات متاح في المتجر الفعلي فقط.');
+  if(data.action==='detail')return {requests:(await store.list('webRequests')).filter(r=>r.id===data.id)};
   if(data.action==='list')return {requests:(await store.list('webRequests')).filter(r=>r.status==='pending')};
   if(data.action==='create'){const r={...data,number:'DEMO-'+data.id.slice(0,8),status:'pending',subtotal:data.items.reduce((s,i)=>s+i.qty*i.price,0),createdAt:new Date().toISOString()};await store.atomic(['webRequests/'+data.id],()=>({writes:{['webRequests/'+data.id]:r}}));return r;}
   const r=await store.get('webRequests/'+data.id);assert(r,'الطلب غير موجود.');
