@@ -3,7 +3,7 @@
   publish = "dist"
   functions = "netlify/functions"
 [build.environment]
-  NODE_VERSION = "22"
+  NODE_VERSION = "24"
   PNPM_FLAGS = "--frozen-lockfile --ignore-scripts --shamefully-hoist"
   MARKET_MODEL = "gpt-4.1"
 [functions]
