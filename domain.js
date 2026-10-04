@@ -45,6 +45,15 @@ export function planOrder(products,input,mode){
 }
 export function receiveStock(product,variantId,q,unitCost,landed=0){const p=structuredClone(product);const v=p.variants.find(v=>v.id===variantId);assert(v,'الصنف غير موجود.');q=quantity(q);integerMoney(unitCost);integerMoney(landed);const value=q*unitCost+landed;v.value=stockValue(v)+value;v.cost=Math.round(v.value/(v.qty+q));v.qty+=q;v.hidden=false;validateProduct(p);return {product:p,total:value};}
 export function paymentState(order){const due=order.total-order.paid;return {due,status:order.paid===0?'لم يُدفع':due===0?'مدفوع بالكامل':'دفع جزئي'};}
+// Display-only classification: never changes stock, payment or shipment records.
+export function orderStage(o,today=localDate()){
+  if(['cancelled','returned'].includes(o.status))return 'closed';
+  if(o.fulfillment==='issue')return 'attention';
+  if(['shipped','delivered'].includes(o.fulfillment))return o.paid>=o.total&&!o.pendingReceipt?'complete':'unpaid';
+  if(o.status==='reserved'&&o.expires&&o.expires<today)return 'attention';
+  return 'preparing';
+}
+export function orderSource(o){const s=String(o.source||'').trim().toLowerCase();return ['instagram','إنستجرام','انستجرام'].includes(s)?'instagram':['المتجر','website'].includes(s)?'website':s==='whatsapp'?'whatsapp':s==='manual'?'manual':'other';}
 export function totals({orders=[],expenses=[],cash=[]},from,to){const within=x=>x.date>=from&&x.date<=to;const sales=orders.filter(o=>['sold','returned'].includes(o.status)&&within(o));const returns=orders.filter(o=>o.status==='returned'&&within({date:o.returnDate}));
   const revenue=sales.reduce((s,o)=>s+o.total,0)-returns.reduce((s,o)=>s+o.total,0);
   const cogs=sales.reduce((s,o)=>s+o.cogs,0)-returns.filter(o=>o.restock).reduce((s,o)=>s+o.cogs,0);
