@@ -4,8 +4,9 @@
   functions = "netlify/functions"
 [build.environment]
   NODE_VERSION = "22"
-  PNPM_FLAGS = "--frozen-lockfile --ignore-scripts"
+  PNPM_FLAGS = "--frozen-lockfile --ignore-scripts --shamefully-hoist"
   MARKET_MODEL = "gpt-4.1"
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["sharp", "firebase-admin"]
+  included_files = ["node_modules/**"]
