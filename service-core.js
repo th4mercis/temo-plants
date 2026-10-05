@@ -51,7 +51,18 @@ async function stockChange(input,op=D.id()){
 }
 async function createOrder(input,mode,op=D.id()){
   D.assert(['reserve','sell'].includes(mode),'حالة غير صالحة.');D.assert(input.customer?.trim(),'اسم العميل مطلوب.');input.items=D.normalizeItems(input.items);D.dateValue(input.date);D.integerMoney(input.paid);if(mode==='reserve'){input.expires=input.expires||'';if(input.expires){D.dateValue(input.expires);D.assert(input.expires>=input.date,'انتهاء الحجز قبل تاريخ الطلب.');}D.assert(input.paid===0,'سجّل البيع قبل استلام الدفعات.');}
-  const paths=[...new Set(input.items.map(i=>'products/'+i.productId))];const phone=input.customerPhone?phoneNumber(input.customerPhone):'';const customerId=input.customerId||(phone?'phone-'+phone:'');D.assert(!customerId||/^phone-[1-9][0-9]{7,14}$/.test(customerId),'معرّف العميل غير صالح.');
+  const paths=[...new Set(input.items.map(i=>'products/'+i.productId))];const phone=input.customerPhone?phoneNumber(input.customerPhone):'';
+  D.assert(input.customer.trim().length<=200,'اسم العميل طويل.');
+  const normalizedName=input.customer.trim().normalize('NFKC').toLowerCase().replace(/\s+/g,' ');
+  let customerId=input.customerId;
+  if(!customerId){
+   const matches=(await store.list('customers')).filter(c=>phone?c.phone===phone:!c.phone&&c.name.trim().normalize('NFKC').toLowerCase().replace(/\s+/g,' ')===normalizedName);
+   D.assert(matches.length<=1,'يوجد أكثر من عميل مطابق. اختر العميل المسجل من القائمة.');
+   if(matches.length)customerId=matches[0].id;
+   else if(phone)customerId='phone-'+phone;
+   else{const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(normalizedName));customerId='name-'+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');}
+  }
+  D.assert(/^(phone-[1-9][0-9]{7,14}|name-[a-f0-9]{64})$/.test(customerId),'معرّف العميل غير صالح.');
   return store.atomic([...paths,'orders/'+op,...(customerId?['customers/'+customerId]:[])],docs=>{if(docs['orders/'+op])return {result:op};const savedCustomer=customerId?docs['customers/'+customerId]:null;if(input.customerId)D.assert(savedCustomer,'اختر عميلاً مسجلاً صالحاً.');if(savedCustomer)input={...input,customer:savedCustomer.name,customerPhone:savedCustomer.phone};else input={...input,customerPhone:phone};input.customerId=customerId;const plan=D.planOrder(paths.map(p=>docs[p]),input,mode);D.assert(input.paid<=plan.total,'الدفعة أكبر من إجمالي الطلب.');const order={id:op,number:'TP-'+op.slice(0,8).toUpperCase(),customer:input.customer,customerId:input.customerId||'',customerPhone:input.customerPhone||'',source:input.source||'Instagram',destination:input.destination||'',notes:input.notes||'',date:input.date,expires:mode==='reserve'?input.expires:'',items:plan.items,subtotal:plan.subtotal,cogs:plan.cogs,total:plan.total,shippingCharged:plan.shippingCharged,shippingCost:plan.shippingCost,paid:input.paid,status:mode==='reserve'?'reserved':'sold',fulfillment:'pending',revision:1,createdAt:now()};
     const writes={...productWrites(plan.products),['orders/'+op]:order,['audit/'+op]:audit(op,mode,order.number)};
     if(customerId&&!savedCustomer){const at=now();writes['customers/'+customerId]={id:customerId,name:input.customer,phone,city:input.destination||'',notes:'',marketingConsent:false,consentUpdatedAt:at,revision:1,updatedAt:at};}
@@ -166,9 +177,11 @@ async function correctOpeningCost(input,op=D.id()){
 }
 
 async function saveCustomer(input,op=D.id()){
- const phone=phoneNumber(input.phone),id='phone-'+phone;
+ const phone=input.phone?phoneNumber(input.phone):'',id=input.id||(phone?'phone-'+phone:'');
+ D.assert(/^(phone-[1-9][0-9]{7,14}|name-[a-f0-9]{64})$/.test(id),'معرّف العميل غير صالح.');
+ D.assert(!id.startsWith('phone-')||id==='phone-'+phone,'لا يمكن تغيير رقم العميل المرتبط.');
  D.assert(input.name?.trim(),'اسم العميل مطلوب.');D.assert(input.name.length<=200,'اسم العميل طويل.');
- return store.atomic(['customers/'+id,'audit/'+op],docs=>{if(docs['audit/'+op])return {result:id};const old=docs['customers/'+id];D.assert((old?.revision||0)===(input.revision||0),'العميل موجود أو تغيرت بياناته. افتح سجله من قائمة العملاء.');const at=new Date().toISOString();return {writes:{['customers/'+id]:{id,name:input.name.trim(),phone,city:input.city||'',notes:input.notes||'',marketingConsent:!!input.marketingConsent,consentUpdatedAt:old?.marketingConsent===!!input.marketingConsent?old.consentUpdatedAt:at,revision:(old?.revision||0)+1,updatedAt:at},['audit/'+op]:{id:op,kind:'customer',by:store.uid(),at,details:id}},result:id};});
+ return store.atomic(['customers/'+id,'audit/'+op],docs=>{if(docs['audit/'+op])return {result:id};const old=docs['customers/'+id];D.assert(!input.id||old,'العميل غير موجود.');D.assert(!id.startsWith('name-')||phone===(old?.phone||''),'إضافة رقم لهذا الملف تتطلب ربطاً مستقلاً.');D.assert((old?.revision||0)===(input.revision||0),'العميل موجود أو تغيرت بياناته. افتح سجله من قائمة العملاء.');const at=new Date().toISOString();return {writes:{['customers/'+id]:{id,name:input.name.trim(),phone,city:input.city||'',notes:input.notes||'',marketingConsent:!!input.marketingConsent,consentUpdatedAt:old?.marketingConsent===!!input.marketingConsent?old.consentUpdatedAt:at,revision:(old?.revision||0)+1,updatedAt:at},['audit/'+op]:{id:op,kind:'customer',by:store.uid(),at,details:id}},result:id};});
 }
 
 return {receivePlant,saveProduct,stockChange,createOrder,discountOrder,orderAction,expense,supply,setVariantHidden,appendOrderItems,correctPurchaseCost,correctOpeningCost,saveCustomer};
