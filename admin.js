@@ -54,13 +54,16 @@ function renderOrders(){
  if(!webOrdersLoaded&&!webOrdersBusy&&!webOrdersError)refreshWebOrders();
  const list=mergeOrderRequests(state.orders,webOrders);
  const summary=el('div',{class:'order-summary','aria-label':'تصفية الطلبات حسب الحالة'});
- for(const [key,label]of Object.entries(orderStages)){
+ for(const [key,label]of Object.entries(orderStages).filter(([key])=>key!=='all')){
   const matching=list.filter(o=>key==='all'||unifiedOrderStage(o)===key);
   const card=btn('',()=>{orderFilter=key;render();},'order-stat order-tone-'+key);
   card.setAttribute('aria-pressed',String(orderFilter===key));
-  card.append(el('span',{},label),el('strong',{},matching.length),el('small',{},key==='unpaid'?'متبقي '+D.formatMoney(matching.reduce((n,o)=>n+Math.max(0,o.total-o.paid),0)):'عرض الطلبات'));
+  card.append(el('span',{class:'order-stat-label'},label),el('strong',{},matching.length));
+  if(key==='unpaid')card.append(el('small',{},'متبقي '+D.formatMoney(matching.reduce((n,o)=>n+Math.max(0,o.total-o.paid),0))));
   summary.append(card);
  }
+ const all=btn('جميع الطلبات · '+list.length,()=>{orderFilter='all';render();},'button order-all-filter');
+ all.setAttribute('aria-pressed',String(orderFilter==='all'));
  const source=select('مصدر الطلب','order-source-filter',[['','كل المصادر'],...Object.entries(orderSources)],orderSourceFilter);
  const query=el('input',{type:'search',value:orderQuery,placeholder:'اسم العميل أو رقم الطلب','aria-label':'بحث الطلبات'});
  const result=el('div',{}),count=el('p',{class:'muted',role:'status'});
@@ -76,7 +79,7 @@ function renderOrders(){
   result.replaceChildren(grid);
  }
  source.addEventListener('change',()=>{orderSourceFilter=source.querySelector('select').value;draw();});query.addEventListener('input',()=>{orderQuery=query.value;draw();});draw();
- return [head('الطلبات','طلبات الموقع وإنستجرام والحجوزات والمبيعات في مكان واحد. راجع الجديد ثم تابع الدفع والشحن.',[btn('+ طلب / بيع',()=>orderForm(),'button primary'),btn('تحديث الطلبات',()=>refreshWebOrders())]),webOrdersBusy?el('p',{role:'status'},'جارٍ تحميل طلبات الموقع…'):null,webOrdersError?el('p',{class:'form-error',role:'alert'},'تعذر تحميل طلبات الموقع: '+webOrdersError+' — اضغط تحديث الطلبات.'):null,summary,el('p',{class:'hint'},'الأخضر يعني الشحن والسداد؛ الوصول يظهر في عمود الشحن. مصادر الطلبات القديمة تعرض كما سُجلت سابقاً.'),el('div',{class:'filters'},source,query),count,result].filter(Boolean);
+ return [head('الطلبات','طلبات الموقع وإنستجرام والحجوزات والمبيعات في مكان واحد. راجع الجديد ثم تابع الدفع والشحن.',[btn('+ طلب / بيع',()=>orderForm(),'button primary'),btn('تحديث الطلبات',()=>refreshWebOrders())]),webOrdersBusy?el('p',{role:'status'},'جارٍ تحميل طلبات الموقع…'):null,webOrdersError?el('p',{class:'form-error',role:'alert'},'تعذر تحميل طلبات الموقع: '+webOrdersError+' — اضغط تحديث الطلبات.'):null,summary,el('p',{class:'hint'},'الأخضر يعني الشحن والسداد؛ الوصول يظهر في عمود الشحن. مصادر الطلبات القديمة تعرض كما سُجلت سابقاً.'),el('div',{class:'filters order-filters'},source,query,all),count,result].filter(Boolean);
 }
 function appendItemsForm(o){const lines=el('div',{class:'stack'});let count=0;const add=()=>{if(count>=20)return;const i=count++;const row=el('div',{class:'form-grid line-item','data-line':i},select('النبتة والصنف','item-'+i,stockOptions()),field('الكمية الإضافية','qty-'+i,'number','1',{required:'',min:'1',step:'1'}),field('سعر القطعة (ر.س)','price-'+i,'number','',{required:'',min:'0',step:'.01'}));row.querySelector('select').addEventListener('change',e=>{const [pid,vid]=e.target.value.split('|');const old=o.items.find(x=>x.productId===pid&&x.variantId===vid);const v=state.products.find(p=>p.id===pid)?.variants.find(v=>v.id===vid);row.querySelector('[name=price-'+i+']').value=((old?.price??v?.price??0)/100).toFixed(2);});row.append(btn('إزالة البند',()=>row.remove(),'button subtle'));lines.append(row);};add();const op=D.id();dialog('إضافة بنود — '+o.number,el('div',{class:'stack'},el('strong',{},o.customer),el('p',{class:'hint'},'تُضاف للطلب نفسه. المبلغ المستلم ورسوم الشحن لا يتغيران. البنود تُحجز للحجز أو تُخصم للمبيعات، ولن تسجل دفعة جديدة.'),lines,btn('+ بند آخر',add)),f=>api.appendOrderItems(o,[...lines.querySelectorAll('[data-line]')].map(row=>{const i=row.dataset.line;return {...splitVariant(V(f,'item-'+i)),qty:D.quantity(V(f,'qty-'+i)),price:cash(f,'price-'+i)};}),op));}
 function orderDetails(o){const active=['reserved','sold'].includes(o.status);const content=el('div',{class:'stack'},el('p',{},o.customer+' · '+(o.destination||'لم تحدد الوجهة')),el('p',{},'الدفع: '+D.paymentState(o).status+' · الشحن: '+(fulfillmentNames[o.fulfillment]||'قيد التجهيز')),table(['الصنف','الكمية','السعر','الإجمالي'],o.items.map(i=>[i.name+' — '+i.type,i.qty,moneyNode(i.price),moneyNode(i.qty*i.price)])),el('p',{},'إجمالي العميل: '+D.formatMoney(o.total)+' · المستلم: '+D.formatMoney(o.paid)+' · المتبقي: '+D.formatMoney(o.total-o.paid)),o.status==='reserved'?el('p',{class:'tag warn'},o.expires?'حجز حتى '+o.expires+' — لا يُحرّر تلقائياً.':'حجز مفتوح — دون تاريخ انتهاء.'):null,el('div',{class:'actions'},btn('فاتورة',()=>invoice(o)),active?btn('خصم البنود قبل الفاتورة',()=>discountForm(o)):null));
