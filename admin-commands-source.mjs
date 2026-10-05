@@ -3,7 +3,7 @@ import {createMigration} from '../../migration-core.js';
 import {createAdminStore} from '../../admin-store.mjs';
 import {PublicError,parseBody,errorResponse,consumeLimit,requireRecentAdmin} from '../../security.mjs';
 const reply=(statusCode,data)=>({statusCode,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...(statusCode===429?{'Retry-After':'60'}:{})},body:JSON.stringify(data)});
-const arities={health:[1,1],receivePlant:[2,3],saveProduct:[1,2],stockChange:[1,2],createOrder:[2,3],discountOrder:[2,3],orderAction:[2,4],expense:[1,2],supply:[1,2],setVariantHidden:[3,4],appendOrderItems:[2,3],correctPurchaseCost:[1,2],correctOpeningCost:[1,2],saveCustomer:[1,2],importLegacy:[1,1],restoreBackup:[1,1]};
+const arities={health:[1,1],linkOrderCustomer:[1,2],receivePlant:[2,3],saveProduct:[1,2],stockChange:[1,2],createOrder:[2,3],discountOrder:[2,3],orderAction:[2,4],expense:[1,2],supply:[1,2],setVariantHidden:[3,4],appendOrderItems:[2,3],correctPurchaseCost:[1,2],correctOpeningCost:[1,2],saveCustomer:[1,2],importLegacy:[1,1],restoreBackup:[1,1]};
 async function setup(){
  const [{initializeApp,cert,getApps},{getAuth},{getFirestore}]=await Promise.all([import('firebase-admin/app'),import('firebase-admin/auth'),import('firebase-admin/firestore')]);
  const credentials=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT||'{}');if(credentials.project_id!=='temo-plants')throw Error('config');

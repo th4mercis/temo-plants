@@ -14,3 +14,5 @@ export const appendOrderItems=(...args)=>store.demo?local.appendOrderItems(...ar
 export const correctPurchaseCost=(...args)=>store.demo?local.correctPurchaseCost(...args):store.command('correctPurchaseCost',args);
 export const correctOpeningCost=(...args)=>store.demo?local.correctOpeningCost(...args):store.command('correctOpeningCost',args);
 export const saveCustomer=(...args)=>store.demo?local.saveCustomer(...args):store.command('saveCustomer',args);
+
+export const linkOrderCustomer=(...args)=>store.demo?local.linkOrderCustomer(...args):store.command('linkOrderCustomer',args);

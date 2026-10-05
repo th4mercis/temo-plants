@@ -184,5 +184,33 @@ async function saveCustomer(input,op=D.id()){
  return store.atomic(['customers/'+id,'audit/'+op],docs=>{if(docs['audit/'+op])return {result:id};const old=docs['customers/'+id];D.assert(!input.id||old,'العميل غير موجود.');D.assert(!id.startsWith('name-')||phone===(old?.phone||''),'إضافة رقم لهذا الملف تتطلب ربطاً مستقلاً.');D.assert((old?.revision||0)===(input.revision||0),'العميل موجود أو تغيرت بياناته. افتح سجله من قائمة العملاء.');const at=new Date().toISOString();return {writes:{['customers/'+id]:{id,name:input.name.trim(),phone,city:input.city||'',notes:input.notes||'',marketingConsent:!!input.marketingConsent,consentUpdatedAt:old?.marketingConsent===!!input.marketingConsent?old.consentUpdatedAt:at,revision:(old?.revision||0)+1,updatedAt:at},['audit/'+op]:{id:op,kind:'customer',by:store.uid(),at,details:id}},result:id};});
 }
 
-return {receivePlant,saveProduct,stockChange,createOrder,discountOrder,orderAction,expense,supply,setVariantHidden,appendOrderItems,correctPurchaseCost,correctOpeningCost,saveCustomer};
+
+async function linkOrderCustomer(input,op=D.id()){
+ D.assert(Array.isArray(input.orders)&&input.orders.length>0&&input.orders.length<=100,'اختر الطلبات المراد ربطها.');
+ const name=String(input.name||'').trim(),norm=v=>String(v||'').trim().normalize('NFKC').toLowerCase().replace(/\s+/g,' ');
+ D.assert(name&&name.length<=200,'اسم العميل غير صالح.');
+ const orders=input.orders;D.assert(new Set(orders.map(o=>o.id)).size===orders.length,'طلب مكرر.');
+ orders.forEach(o=>D.assert(/^[\w.-]{1,180}$/.test(o.id)&&Number.isInteger(o.revision),'معرف الطلب غير صالح.'));
+ const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(norm(name)));
+ const id='name-'+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');
+ const candidates=(await store.list('customers')).filter(c=>norm(c.name)===norm(name));
+ D.assert(candidates.length<=1,'يوجد أكثر من ملف مطابق؛ يلزم مراجعة الربط.');
+ const customerId=candidates[0]?.id||id,cp='customers/'+customerId;
+ return store.atomic([cp,'audit/'+op,...orders.map(o=>'orders/'+o.id)],docs=>{
+  if(docs['audit/'+op])return {result:customerId};
+  const writes={},at=now();
+  for(const expected of orders){const path='orders/'+expected.id,o=docs[path];
+   D.assert(o&&o.revision===expected.revision,'تغير الطلب؛ حدّث الصفحة.');
+   D.assert(norm(o.customer)===norm(name),'اسم العميل لا يطابق الطلب.');
+   D.assert(!o.customerId,'الطلب مرتبط بعميل بالفعل.');
+   D.assert(!o.customerPhone,'الطلب يحتوي رقم جوال؛ يلزم ربطه بملف الرقم.');
+   writes[path]={...o,customerId,revision:o.revision+1};
+  }
+  if(!docs[cp])writes[cp]={id:customerId,name,phone:'',city:'',notes:'',marketingConsent:false,consentUpdatedAt:at,revision:1,updatedAt:at};
+  writes['audit/'+op]=audit(op,'link-order-customer',{customerId,orderIds:orders.map(o=>o.id)});
+  return {writes,result:customerId};
+ });
+}
+
+return {linkOrderCustomer,receivePlant,saveProduct,stockChange,createOrder,discountOrder,orderAction,expense,supply,setVariantHidden,appendOrderItems,correctPurchaseCost,correctOpeningCost,saveCustomer};
 }
