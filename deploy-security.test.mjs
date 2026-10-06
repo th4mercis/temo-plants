@@ -56,3 +56,11 @@ test('server refuses path traversal and does not accept stock edits via saveProd
  assert.equal((await call('saveProduct',[changed,'edit'])).status,200);
  assert.equal(data.get('tp2_products/p').variants[0].qty,2);
 });
+
+test('extended backup and customer merge are denied to ordinary customers',async()=>{
+ const f=fixture();
+ for(const [action,args] of [['backupExport',[{kind:'accounts'}]],['mergeCustomers',[{sourceId:'a',targetId:'b'}]],['notificationTest',[{}]]]){
+  const result=await f.call(action,args,'customer');assert.equal(result.status,403);
+ }
+ assert.equal([...f.data.keys()].filter(k=>k.startsWith('notificationOutbox/')).length,0);
+});

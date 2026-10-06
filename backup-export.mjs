@@ -7,12 +7,13 @@ export async function backupExport(rt, input) {
   if(input.kind==='documents'){
     if(typeof input.collection!=='string'||!/^\w[\w.-]{0,179}$/.test(input.collection))throw new PublicError('قسم غير صالح.');
     const {FieldPath}=await import('firebase-admin/firestore');
-    let q=rt.db.collection(input.collection).orderBy(FieldPath.documentId()).limit(3);
+    const size=/^tp2_(audit|cash|customers|movements|orders|products|publicProducts|purchases|shipments|expenses|supplies)$/.test(input.collection)?25:3;
+    let q=rt.db.collection(input.collection).orderBy(FieldPath.documentId()).limit(size);
     if(input.after){if(!/^[\w.-]{1,180}$/.test(input.after))throw new PublicError('مؤشر غير صالح.');q=q.startAfter(input.after);}
     const s=await q.get();
     const rows=[];
     for(const d of s.docs){const children=await d.ref.listCollections();if(children.length)throw new PublicError('توجد مجموعات فرعية؛ يلزم تصدير خادمي شامل قبل اعتبار النسخة مكتملة.');rows.push({id:d.id,data:d.data()});}
-    return {rows,next:rows.length===3?rows.at(-1).id:null};
+    return {rows,next:rows.length===size?rows.at(-1).id:null};
   }
   if(input.kind==='accounts'){
     const page=await rt.auth.listUsers(100,input.after||undefined);
