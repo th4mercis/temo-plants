@@ -15,6 +15,20 @@ export async function backupExport(rt, input) {
     for(const d of s.docs){const children=await d.ref.listCollections();if(children.length)throw new PublicError('توجد مجموعات فرعية؛ يلزم تصدير خادمي شامل قبل اعتبار النسخة مكتملة.');rows.push({id:d.id,data:d.data()});}
     return {rows,next:rows.length===size?rows.at(-1).id:null};
   }
+  if(input.kind==='catalogImage'){
+    if(typeof input.productId!=='string'||!/^[\w.-]{1,180}$/.test(input.productId))throw new PublicError('نبتة غير صالحة.');
+    const product=(await rt.db.doc('tp2_products/'+input.productId).get()).data();
+    const url=product?.image;
+    const u=new URL(url);
+    if(u.protocol!=='https:'||u.hostname!=='firebasestorage.googleapis.com'||u.port||u.username||u.password||!u.pathname.startsWith('/v0/b/temo-plants.firebasestorage.app/o/catalog%2F'))throw new PublicError('الصورة ليست من كتالوج المتجر.');
+    const response=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(15000)});
+    if(!response.ok)throw new PublicError('تعذر نسخ صورة النبتة.');
+    const mime=response.headers.get('content-type')?.split(';')[0];
+    if(!['image/jpeg','image/webp','image/png'].includes(mime))throw new PublicError('نوع الصورة غير مدعوم.');
+    const parts=[];let size=0;
+    for await(const part of response.body){size+=part.length;if(size>3*1024*1024)throw new PublicError('الصورة أكبر من حد النسخ.');parts.push(part);}
+    return {url,data:'data:'+mime+';base64,'+Buffer.concat(parts).toString('base64')};
+  }
   if(input.kind==='accounts'){
     const page=await rt.auth.listUsers(100,input.after||undefined);
     return {rows:page.users.map(u=>({uid:u.uid,email:u.email||'',emailVerified:u.emailVerified,disabled:u.disabled,displayName:u.displayName||'',phoneNumber:u.phoneNumber||'',providerData:u.providerData,customClaims:u.customClaims||{},metadata:u.metadata.toJSON()})),next:page.pageToken||null,requiresPasswordResetOnDisaster:true};
