@@ -36,7 +36,7 @@ async function restoreBackup(backup){
   for(const s of backup.data.supplies||[]){D.assert(typeof s.name==='string'&&Number.isSafeInteger(s.qty)&&s.qty>=0,'مستلزم غير صالح.');D.integerMoney(s.cost);}
   // Build without mutating the caller's backup. Every product is restored as a draft.
   for(const c of store.collections){for(const source of backup.data[c]||[]){const row=structuredClone(source);if(c==='products'){row.published=false;row.updatedAt=new Date().toISOString();}entries.push([c+'/'+row.id,row]);}}
-  D.assert(entries.length<=350,'الاستعادة التلقائية تدعم حتى 350 سجلاً. تحتاج النسخة الأكبر استعادة مخصصة.');D.assert(new Set(entries.map(([p])=>p)).size===entries.length,'معرّفات مكررة في النسخة.');
+  D.assert(entries.length<=350||store.isolatedRecovery===true,'النسخة تتجاوز 350 سجلاً؛ استخدم أداة الاستعادة المحلية المعزولة.');D.assert(new Set(entries.map(([p])=>p)).size===entries.length,'معرّفات مكررة في النسخة.');
   for(const c of store.collections)D.assert((await store.list(c)).length===0,'الاستعادة متاحة إلى قاعدة الإصدار الجديد الفارغة فقط. القسم يحتوي سجلات: '+c);
   return store.atomic(entries.map(([p])=>p),docs=>{for(const [p]of entries)D.assert(!docs[p],'سجل موجود مسبقاً.');return {writes:Object.fromEntries(entries),result:true};});
 }

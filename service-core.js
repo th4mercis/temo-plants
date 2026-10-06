@@ -56,14 +56,14 @@ async function createOrder(input,mode,op=D.id()){
   const normalizedName=input.customer.trim().normalize('NFKC').toLowerCase().replace(/\s+/g,' ');
   let customerId=input.customerId;
   if(!customerId){
-   const matches=(await store.list('customers')).filter(c=>phone?c.phone===phone:!c.phone&&c.name.trim().normalize('NFKC').toLowerCase().replace(/\s+/g,' ')===normalizedName);
+   const matches=(await store.list('customers')).filter(c=>!c.mergedInto&&(phone?c.phone===phone:!c.phone&&c.name.trim().normalize('NFKC').toLowerCase().replace(/\s+/g,' ')===normalizedName));
    D.assert(matches.length<=1,'يوجد أكثر من عميل مطابق. اختر العميل المسجل من القائمة.');
    if(matches.length)customerId=matches[0].id;
    else if(phone)customerId='phone-'+phone;
    else{const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(normalizedName));customerId='name-'+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');}
   }
   D.assert(/^(phone-[1-9][0-9]{7,14}|name-[a-f0-9]{64})$/.test(customerId),'معرّف العميل غير صالح.');
-  return store.atomic([...paths,'orders/'+op,...(customerId?['customers/'+customerId]:[])],docs=>{if(docs['orders/'+op])return {result:op};const savedCustomer=customerId?docs['customers/'+customerId]:null;if(input.customerId)D.assert(savedCustomer,'اختر عميلاً مسجلاً صالحاً.');if(savedCustomer)input={...input,customer:savedCustomer.name,customerPhone:savedCustomer.phone};else input={...input,customerPhone:phone};input.customerId=customerId;const plan=D.planOrder(paths.map(p=>docs[p]),input,mode);D.assert(input.paid<=plan.total,'الدفعة أكبر من إجمالي الطلب.');const order={id:op,number:'TP-'+op.slice(0,8).toUpperCase(),customer:input.customer,customerId:input.customerId||'',customerPhone:input.customerPhone||'',source:input.source||'Instagram',destination:input.destination||'',notes:input.notes||'',date:input.date,expires:mode==='reserve'?input.expires:'',items:plan.items,subtotal:plan.subtotal,cogs:plan.cogs,total:plan.total,shippingCharged:plan.shippingCharged,shippingCost:plan.shippingCost,paid:input.paid,status:mode==='reserve'?'reserved':'sold',fulfillment:'pending',revision:1,createdAt:now()};
+  return store.atomic([...paths,'orders/'+op,...(customerId?['customers/'+customerId]:[])],docs=>{if(docs['orders/'+op])return {result:op};const savedCustomer=customerId?docs['customers/'+customerId]:null;if(input.customerId)D.assert(savedCustomer,'اختر عميلاً مسجلاً صالحاً.');D.assert(!savedCustomer?.mergedInto,'تم دمج العميل؛ اختر ملفه الحالي.');if(savedCustomer)input={...input,customer:savedCustomer.name,customerPhone:savedCustomer.phone};else input={...input,customerPhone:phone};input.customerId=customerId;const plan=D.planOrder(paths.map(p=>docs[p]),input,mode);D.assert(input.paid<=plan.total,'الدفعة أكبر من إجمالي الطلب.');const order={id:op,number:'TP-'+op.slice(0,8).toUpperCase(),customer:input.customer,customerId:input.customerId||'',customerPhone:input.customerPhone||'',source:input.source||'Instagram',destination:input.destination||'',notes:input.notes||'',date:input.date,expires:mode==='reserve'?input.expires:'',items:plan.items,subtotal:plan.subtotal,cogs:plan.cogs,total:plan.total,shippingCharged:plan.shippingCharged,shippingCost:plan.shippingCost,paid:input.paid,status:mode==='reserve'?'reserved':'sold',fulfillment:'pending',revision:1,createdAt:now()};
     const writes={...productWrites(plan.products),['orders/'+op]:order,['audit/'+op]:audit(op,mode,order.number)};
     if(customerId&&!savedCustomer){const at=now();writes['customers/'+customerId]={id:customerId,name:input.customer,phone,city:input.destination||'',notes:'',marketingConsent:false,consentUpdatedAt:at,revision:1,updatedAt:at};}
     plan.movements.forEach((m,i)=>writes['movements/'+op+'-'+i]={...m,id:op+'-'+i,orderId:op,date:input.date,at:now(),by:store.uid()});
@@ -177,11 +177,12 @@ async function correctOpeningCost(input,op=D.id()){
 }
 
 async function saveCustomer(input,op=D.id()){
+ if(input.id?.startsWith('name-')&&input.phone)return attachCustomerPhone(input,op);
  const phone=input.phone?phoneNumber(input.phone):'',id=input.id||(phone?'phone-'+phone:'');
  D.assert(/^(phone-[1-9][0-9]{7,14}|name-[a-f0-9]{64})$/.test(id),'معرّف العميل غير صالح.');
  D.assert(!id.startsWith('phone-')||id==='phone-'+phone,'لا يمكن تغيير رقم العميل المرتبط.');
  D.assert(input.name?.trim(),'اسم العميل مطلوب.');D.assert(input.name.length<=200,'اسم العميل طويل.');
- return store.atomic(['customers/'+id,'audit/'+op],docs=>{if(docs['audit/'+op])return {result:id};const old=docs['customers/'+id];D.assert(!input.id||old,'العميل غير موجود.');D.assert(!id.startsWith('name-')||phone===(old?.phone||''),'إضافة رقم لهذا الملف تتطلب ربطاً مستقلاً.');D.assert((old?.revision||0)===(input.revision||0),'العميل موجود أو تغيرت بياناته. افتح سجله من قائمة العملاء.');const at=new Date().toISOString();return {writes:{['customers/'+id]:{id,name:input.name.trim(),phone,city:input.city||'',notes:input.notes||'',marketingConsent:!!input.marketingConsent,consentUpdatedAt:old?.marketingConsent===!!input.marketingConsent?old.consentUpdatedAt:at,revision:(old?.revision||0)+1,updatedAt:at},['audit/'+op]:{id:op,kind:'customer',by:store.uid(),at,details:id}},result:id};});
+ return store.atomic(['customers/'+id,'audit/'+op],docs=>{if(docs['audit/'+op])return {result:id};const old=docs['customers/'+id];D.assert(!input.id||old,'العميل غير موجود.');D.assert(!old?.mergedInto,'تم دمج هذا الملف. افتح الملف الحالي.');D.assert(!id.startsWith('name-')||phone===(old?.phone||''),'إضافة رقم لهذا الملف تتطلب ربطاً مستقلاً.');D.assert((old?.revision||0)===(input.revision||0),'العميل موجود أو تغيرت بياناته. افتح سجله من قائمة العملاء.');const at=new Date().toISOString();return {writes:{['customers/'+id]:{id,name:input.name.trim(),phone,city:input.city||'',notes:input.notes||'',marketingConsent:!!input.marketingConsent,consentUpdatedAt:old?.marketingConsent===!!input.marketingConsent?old.consentUpdatedAt:at,revision:(old?.revision||0)+1,updatedAt:at},['audit/'+op]:{id:op,kind:'customer',by:store.uid(),at,details:id}},result:id};});
 }
 
 
@@ -212,5 +213,29 @@ async function linkOrderCustomer(input,op=D.id()){
  });
 }
 
-return {linkOrderCustomer,receivePlant,saveProduct,stockChange,createOrder,discountOrder,orderAction,expense,supply,setVariantHidden,appendOrderItems,correctPurchaseCost,correctOpeningCost,saveCustomer};
+
+async function attachCustomerPhone(input,op=D.id()){
+ const phone=phoneNumber(input.phone),targetId='phone-'+phone;
+ D.assert(/^name-[a-f0-9]{64}$/.test(input.id),'اختر ملفاً بالاسم دون رقم.');
+ return store.atomic(['customers/'+input.id,'customers/'+targetId,'audit/'+op],docs=>{
+  if(docs['audit/'+op])return {result:targetId};
+  const old=docs['customers/'+input.id],target=docs['customers/'+targetId];
+  D.assert(old&&!old.mergedInto&&old.revision===input.revision,'تغير العميل؛ افتح ملفه مجدداً.');
+  D.assert(!target,'الرقم مسجل لعميل آخر؛ استخدم دمج العملاء بعد المراجعة.');
+  D.assert(input.name?.trim()&&input.name.length<=200,'اسم العميل غير صالح.');
+  const at=now();return {writes:{['customers/'+targetId]:{...old,id:targetId,name:input.name.trim(),phone,city:String(input.city||'').slice(0,200),notes:String(input.notes||'').slice(0,2000),marketingConsent:old.marketingConsent===true&&input.marketingConsent===true,revision:1,updatedAt:at},['customers/'+input.id]:{...old,mergedInto:targetId,revision:old.revision+1,updatedAt:at},['audit/'+op]:audit(op,'customer-add-phone',{sourceId:input.id,targetId})},result:targetId};
+ });
+}
+async function mergeCustomers(input,op=D.id()){
+ const valid=id=>/^(phone-[1-9][0-9]{7,14}|name-[a-f0-9]{64})$/.test(id||'');
+ D.assert(valid(input.sourceId)&&valid(input.targetId)&&input.sourceId!==input.targetId,'اختر ملفين مختلفين.');
+ return store.atomic(['customers/'+input.sourceId,'customers/'+input.targetId,'audit/'+op],docs=>{
+  if(docs['audit/'+op])return {result:input.targetId};
+  const a=docs['customers/'+input.sourceId],b=docs['customers/'+input.targetId];
+  D.assert(a&&b&&!a.mergedInto&&!b.mergedInto,'اختر ملفين نشطين.');D.assert(a.revision===input.sourceRevision&&b.revision===input.targetRevision,'تغيرت بيانات العميل؛ راجع الدمج مجدداً.');
+  const at=now();return {writes:{['customers/'+a.id]:{...a,mergedInto:b.id,revision:a.revision+1,updatedAt:at},['customers/'+b.id]:{...b,marketingConsent:a.marketingConsent===true&&b.marketingConsent===true,revision:b.revision+1,updatedAt:at},['audit/'+op]:audit(op,'customer-merge',{sourceId:a.id,targetId:b.id,sourceBefore:a,targetBefore:b})},result:b.id};
+ });
+}
+
+return {mergeCustomers,linkOrderCustomer,receivePlant,saveProduct,stockChange,createOrder,discountOrder,orderAction,expense,supply,setVariantHidden,appendOrderItems,correctPurchaseCost,correctOpeningCost,saveCustomer};
 }

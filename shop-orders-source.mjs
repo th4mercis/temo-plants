@@ -1,3 +1,4 @@
+import {queueNotification,tryNotification} from '../../order-notifications.mjs';
 import {PublicError,parseBody,errorResponse,consumeLimit,requireRecentAdmin} from '../../security.mjs';
 import {normalizeReceiptImage} from '../../receipt-image.mjs';
 import {createHash} from 'node:crypto';
@@ -89,7 +90,7 @@ export function createHandler(load=setup){let context;return async function hand
    if(r.receipt?.status==='pending')throw new PublicError('يوجد إيصال بانتظار المراجعة.');
    const imageHash=hash(receipt.image);if((r.receiptHashes||[]).includes(imageHash))throw new PublicError('سبق إرسال هذا الإيصال؛ اختر إيصال التحويل الجديد.');
    if((r.receiptHashes||[]).length>=20)throw new PublicError('وصلت لحد الإيصالات لهذا الطلب؛ تواصل مع المتجر.');
-   const at=new Date().toISOString();o.pendingReceipt=receipt.id;o.revision++;tx.set(db.doc('tp2_orders/'+o.id),o);tx.set(rr,{...receipt,orderId:r.id,status:'pending',createdAt:at});r.receiptHashes=[...(r.receiptHashes||[]),imageHash];r.receipt={id:receipt.id,amount:receipt.amount,status:'pending'};r.updatedAt=at;tx.set(ref,r);return {status:'pending'};
+   const at=new Date().toISOString();o.pendingReceipt=receipt.id;o.revision++;tx.set(db.doc('tp2_orders/'+o.id),o);tx.set(rr,{...receipt,orderId:r.id,status:'pending',createdAt:at});r.receiptHashes=[...(r.receiptHashes||[]),imageHash];r.receipt={id:receipt.id,amount:receipt.amount,status:'pending'};r.updatedAt=at;tx.set(ref,r);queueNotification(tx,db,{id:'receipt-'+receipt.id,kind:'receipt',number:r.number});return {status:'pending'};
   });return reply(200,result);
  }
  if(body.action==='status'){
@@ -100,7 +101,7 @@ export function createHandler(load=setup){let context;return async function hand
  if(body.action!=='create')throw new PublicError('عملية غير صالحة.');const owner=await verifiedCustomer();await consumeLimit(db,'uid:'+owner.uid,'create',10);const input=validateRequest(body);
  const result=await db.runTransaction(async tx=>{const ref=db.doc('shopRequests/'+input.id),old=(await tx.get(ref)).data();if(old){if(old.customerUid!==owner.uid||old.tokenHash!==hash(input.token))throw new PublicError('معرف مكرر.');return publicStatus(old);}
   const ip=event.headers['x-nf-client-connection-ip'];if(!ip)throw new PublicError('تعذر التحقق من الطلب.');const day=new Date().toISOString().slice(0,10);const rateRefs=['ip-'+hash(ip),'phone-'+hash(input.phone),'uid-'+hash(owner.uid)].map(k=>db.doc('shopRequestLimits/'+day+'-'+k));const rates=await Promise.all(rateRefs.map(r=>tx.get(r)));if(rates.some(s=>(s.data()?.count||0)>=10)){throw new PublicError('وصلت للحد اليومي للطلبات. حاول لاحقاً.',429);}
-  const ids=[...new Set(input.items.map(i=>i.productId))],ps=await Promise.all(ids.map(id=>tx.get(db.doc('tp2_products/'+id))));const quoted=quoteRequest(input,ps.map(s=>s.data()));const {token,...clean}=input;const at=new Date().toISOString();const r={...clean,...quoted,customerUid:owner.uid,customerEmail:owner.email,tokenHash:hash(token),number:'WEB-'+input.id.slice(0,8).toUpperCase(),status:'pending',shippingCharged:null,total:null,createdAt:at,updatedAt:at};tx.set(ref,r);rateRefs.forEach((ref,i)=>tx.set(ref,{count:(rates[i].data()?.count||0)+1,expiresAt:new Date(Date.now()+172800000)}));return publicStatus(r);
+  const ids=[...new Set(input.items.map(i=>i.productId))],ps=await Promise.all(ids.map(id=>tx.get(db.doc('tp2_products/'+id))));const quoted=quoteRequest(input,ps.map(s=>s.data()));const {token,...clean}=input;const at=new Date().toISOString();const r={...clean,...quoted,customerUid:owner.uid,customerEmail:owner.email,tokenHash:hash(token),number:'WEB-'+input.id.slice(0,8).toUpperCase(),status:'pending',shippingCharged:null,total:null,createdAt:at,updatedAt:at};tx.set(ref,r);queueNotification(tx,db,{id:'order-'+input.id,kind:'order',number:r.number});rateRefs.forEach((ref,i)=>tx.set(ref,{count:(rates[i].data()?.count||0)+1,expiresAt:new Date(Date.now()+172800000)}));return publicStatus(r);
  });return reply(200,result);
  }catch(e){const result=errorResponse(e,body.action);return reply(result.status,result.data);}
 }

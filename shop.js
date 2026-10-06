@@ -9,7 +9,7 @@ let products=[],activeId=new URLSearchParams(location.search).get('product'),sel
 const home='shop.html'+(store.demo?'?demo=1':'');
 const href=id=>home+(store.demo?'&':'?')+'product='+encodeURIComponent(id);
 const instagram='https://ig.me/m/'+encodeURIComponent(shopSettings.instagram);
-function placeholder(){return el('span',{class:'plant-placeholder'},el('img',{src:'brand-logo.jpeg',alt:'Temo_plants',width:'100',height:'100'}),el('small',{},'صورة النبات قريباً'));}
+function placeholder(){return el('span',{class:'plant-placeholder'},el('img',{src:'brand-logo-d9723ed1a9.webp',alt:'Temo_plants',width:'100',height:'100'}),el('small',{},'صورة النبات قريباً'));}
 function image(p){const src=D.safeImage(p.image);if(!src)return placeholder();const n=el('img',{src,alt:p.name,loading:'lazy',decoding:'async',width:'800',height:'800'});n.addEventListener('error',()=>n.replaceWith(placeholder()));return n;}
 function showProduct(id,push=true){activeId=id;selectedVariant='';selectedQty=1;if(push)history.pushState({},'',href(id));render();$('main').focus();scrollTo({top:0,behavior:'smooth'});}
 function updateMeta(p){document.title=p?p.name+' | Temo Plants':'Temo Plants — نباتات نادرة';document.querySelector('meta[name="description"]').content=p?(p.description||p.name).slice(0,160):'كل ورقة تحكي شغف. نباتات نادرة وزراعة مائية من السعودية — Alocasia · Anthurium · Hoya.';let canonical=document.querySelector('link[rel=canonical]');if(shopSettings.canonicalBase){if(!canonical){canonical=el('link',{rel:'canonical'});document.head.append(canonical);}canonical.href=shopSettings.canonicalBase+'/shop.html'+(p?'?product='+encodeURIComponent(p.id):'');}}

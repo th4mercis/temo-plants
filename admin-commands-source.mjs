@@ -1,9 +1,11 @@
+import {queueNotification,tryNotification} from '../../order-notifications.mjs';
+import {backupExport} from '../../backup-export.mjs';
 import {createServices} from '../../service-core.js';
 import {createMigration} from '../../migration-core.js';
 import {createAdminStore} from '../../admin-store.mjs';
 import {PublicError,parseBody,errorResponse,consumeLimit,requireRecentAdmin} from '../../security.mjs';
 const reply=(statusCode,data)=>({statusCode,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...(statusCode===429?{'Retry-After':'60'}:{})},body:JSON.stringify(data)});
-const arities={health:[1,1],linkOrderCustomer:[1,2],receivePlant:[2,3],saveProduct:[1,2],stockChange:[1,2],createOrder:[2,3],discountOrder:[2,3],orderAction:[2,4],expense:[1,2],supply:[1,2],setVariantHidden:[3,4],appendOrderItems:[2,3],correctPurchaseCost:[1,2],correctOpeningCost:[1,2],saveCustomer:[1,2],importLegacy:[1,1],restoreBackup:[1,1]};
+const arities={backupExport:[1,1],mergeCustomers:[1,2],notificationTest:[1,1],health:[1,1],linkOrderCustomer:[1,2],receivePlant:[2,3],saveProduct:[1,2],stockChange:[1,2],createOrder:[2,3],discountOrder:[2,3],orderAction:[2,4],expense:[1,2],supply:[1,2],setVariantHidden:[3,4],appendOrderItems:[2,3],correctPurchaseCost:[1,2],correctOpeningCost:[1,2],saveCustomer:[1,2],importLegacy:[1,1],restoreBackup:[1,1]};
 async function setup(){
  const [{initializeApp,cert,getApps},{getAuth},{getFirestore}]=await Promise.all([import('firebase-admin/app'),import('firebase-admin/auth'),import('firebase-admin/firestore')]);
  const credentials=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT||'{}');if(credentials.project_id!=='temo-plants')throw Error('config');
@@ -19,6 +21,8 @@ export function createHandler(load=setup){let runtime;return async event=>{
  try{const token=event.headers.authorization||'';if(!token.startsWith('Bearer '))throw Error();user=await rt.auth.verifyIdToken(token.slice(7),true);if((await rt.db.doc('admins/'+user.uid).get()).data()?.active!==true)throw Error();}catch{return reply(403,{error:'سجّل الدخول بحساب مدير مخوّل.'});}
  try{
   requireRecentAdmin(user);if(body.action==='health')return reply(200,{result:'خدمة الحفظ الآمن متصلة — الإصدار security-2026-10-04'});await consumeLimit(rt.db,'admin:'+user.uid,'commands',60);
+  if(body.action==='notificationTest'){const id='test-'+new Date().toISOString().slice(0,10);await rt.db.runTransaction(async tx=>{const ref=rt.db.doc('notificationOutbox/'+id);if(!(await tx.get(ref)).exists)queueNotification(tx,rt.db,{id,kind:'test',number:'اختبار تنبيهات الإدارة'});});return reply(200,{result:await tryNotification(rt.db,id)});}
+  if(body.action==='backupExport')return reply(200,{result:await backupExport(rt,body.args[0])});
   const store=createAdminStore(rt.db,user,body),api={...createServices(store),...createMigration(store)};
   return reply(200,{result:await api[body.action](...body.args)});
  }catch(e){const failure=errorResponse(e,body.action);return reply(failure.status,failure.data);}
