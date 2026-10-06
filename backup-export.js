@@ -1,7 +1,12 @@
 import * as store from './store.js';
-import {download,notice} from './ui.js';
+import {el,dialog,notice} from './ui.js';
 
+let exporting=false;
 export async function exportExtendedBackup(){
+  if(exporting)throw Error("تصدير النسخة قيد التنفيذ؛ انتظر اكتماله.");
+  exporting=true;try{return await runExtendedBackup();}finally{exporting=false;}
+}
+async function runExtendedBackup(){
   if(store.demo)throw Error('التصدير الموسع متاح للمدير في النسخة الحية.');
   const start=new Date().toISOString(),bundle={schemaVersion:3,kind:'temo-extended-local-backup',startedAt:start,firestore:{},accounts:[],images:[],warnings:['لا يشمل كلمات المرور أو مفاتيح الخدمات أو إعدادات المنصات. حسابات البريد تتطلب إعادة تعيين كلمة المرور عند التعافي.','التصدير متعدد الصفحات؛ تجنب تعديل البيانات أثناءه. ليس لقطة زمنية ذرية.']};
   const inventory=await store.command('backupExport',[{kind:'inventory'}]);
@@ -20,5 +25,7 @@ export async function exportExtendedBackup(){
     await new Promise(r=>setTimeout(r,1100));
   }
   bundle.completedAt=new Date().toISOString();bundle.warnings.push('نسخ الصور يشمل الصور المرتبطة بالنباتات فقط، ولا يشمل ملفات Storage غير المرتبطة.');
-  download('temo-extended-'+start.slice(0,10)+'.json',bundle);notice('تم تنزيل النسخة الموسعة؛ راجع حدود التغطية المسجلة داخل الملف.');
+  const name='temo-extended-'+start.slice(0,10)+'.json',url=URL.createObjectURL(new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'}));
+  dialog('النسخة الموسعة جاهزة للحفظ',el('div',{class:'stack'},el('p',{},'احفظ الملف في مكان خاص. يحتوي بيانات العملاء والسجلات والصور المرتبطة، ولا يشمل كلمات المرور.'),el('a',{class:'button primary',href:url,download:name},'حفظ ملف النسخة الموسعة')));
+  notice('اكتمل تجهيز النسخة؛ اضغط حفظ ملف النسخة الموسعة.');
 }
