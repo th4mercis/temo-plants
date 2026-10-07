@@ -33,7 +33,7 @@ async function saveProduct(input,op=D.id()){
   return store.atomic([path,'audit/'+op],docs=>{if(docs['audit/'+op])return {result:input.id};const old=docs[path];D.assert(!old||old.revision===input.revision,'تغيرت النبتة على جهاز آخر. أغلق النموذج وأعد فتحه.');const p=structuredClone(input);
     if(old){D.assert(old.variants.every(v=>p.variants.some(x=>x.id===v.id)),'لا يمكن إزالة صنف له تاريخ؛ أوقف عرضه بدلاً من حذفه.');p.code=old.code;p.variants.forEach(v=>{const prev=old.variants.find(x=>x.id===v.id);if(prev){v.qty=prev.qty;v.reserved=prev.reserved;v.cost=prev.cost;v.value=D.stockValue(prev);v.hidden=!!prev.hidden;if(D.variantHidden(v))v.sell=false;}else{D.assert(v.qty===0&&v.reserved===0&&v.cost===0,'الصنف الجديد يبدأ برصيد صفر.');v.value=0;}});if(p.archived)D.assert(p.variants.every(v=>v.qty===0&&v.reserved===0),'لا يمكن أرشفة نبات له مخزون أو حجز.');}
     else{D.assert(p.variants.every(v=>v.qty===0&&v.reserved===0),'المنتج الجديد يبدأ بصفر؛ سجل رصيداً افتتاحياً أو مشتريات.');}
-    return {writes:{...productWrites([p]),['audit/'+op]:audit(op,'product',p.id)},result:p.id};
+    return {writes:{...productWrites([p]),['audit/'+op]:{...audit(op,'product',p.id),...(JSON.stringify(old?.originPurchase)!==JSON.stringify(p.originPurchase)?{originProductId:p.id,previousOrigin:old?.originPurchase||null,nextOrigin:p.originPurchase||null}:{})}},result:p.id};
   });
 }
 async function stockChange(input,op=D.id()){

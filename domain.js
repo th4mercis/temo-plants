@@ -1,3 +1,4 @@
+import {validateOrigin} from './origin-cost.js';
 export const SCHEMA = 2;
 export const id = () => crypto.randomUUID();
 export class ValidationError extends Error { constructor(message){super(message);this.name='ValidationError';} }
@@ -12,6 +13,7 @@ export const available=v=>v.qty-v.reserved;
 export const variantHidden=v=>!!v.hidden&&v.qty===0&&v.reserved===0;
 export const stockValue=v=>v.value??v.cost*v.qty;
 export function validateProduct(p){
+  validateOrigin(p.originPurchase);
   assert(typeof p.id==='string'&&p.id.length>0,'معرّف المنتج غير صالح.');
   assert(typeof p.name==='string'&&p.name.trim().length>0&&p.name.length<=200,'اسم النبات مطلوب (حتى 200 حرف).');
   assert(Array.isArray(p.variants)&&p.variants.length>0&&p.variants.length<=30,'يلزم صنف واحد إلى 30 صنفاً.');
