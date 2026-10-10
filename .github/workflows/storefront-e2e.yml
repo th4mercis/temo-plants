@@ -1,0 +1,32 @@
+name: Storefront demo checks
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  storefront:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build deployment and run existing regression tests
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --ignore-scripts --shamefully-hoist
+          node build-market.mjs
+      - name: Install isolated browser test dependency
+        run: |
+          npm install --prefix "$RUNNER_TEMP/storefront-tests" --ignore-scripts --no-audit --no-fund playwright@1.62.1
+          node "$RUNNER_TEMP/storefront-tests/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Test demo storefront
+        run: |
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/storefront-tests/node_modules/playwright/index.mjs" node tools/storefront-e2e.mjs dist
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storefront-results
+          path: e2e-results/
