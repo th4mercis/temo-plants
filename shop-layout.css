@@ -46,7 +46,7 @@
 .shop-page .product-visual>img{position:absolute;inset:0;display:block;inline-size:100%;block-size:100%;object-fit:cover}
 .shop-page .product-visual>.plant-placeholder{position:absolute;inset:0}
 .shop-page .product-visual .tag{position:absolute;inset-block-start:8px;inset-inline-start:8px;inset-inline-end:auto;max-inline-size:calc(100% - 16px);font-size:10px;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.shop-page .last-piece{position:absolute;inset-block-end:8px;inset-inline-start:8px;background:var(--surface);color:var(--green);border-radius:6px;font-size:11px;padding:4px 7px}
+.shop-page .last-piece{position:absolute;inset-block-start:8px;inset-inline-end:8px;background:var(--surface);color:var(--green);border-radius:6px;font-size:11px;padding:4px 7px}
 .shop-page .product-content{display:flex;flex-direction:column;gap:8px;padding:14px;min-inline-size:0;min-block-size:0;flex:1}
 .shop-page .product-content h3{font-size:17px;line-height:1.45;margin:0;min-block-size:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .shop-page .product-content h3 a{color:inherit;text-decoration:none}
@@ -95,3 +95,5 @@
 }
 @media(max-width:540px){.shop-page .brand small{display:none}}
 @media(prefers-reduced-motion:reduce){.shop-page *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+.shop-page .product-visual:has(.last-piece) .genus-tag{inset-block-start:40px}
