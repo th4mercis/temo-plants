@@ -34,6 +34,9 @@ try{
    const blocked=[],errors=[];
    await context.route('**/*',route=>{
     const request=route.request(),url=new URL(request.url());
+    // Optional web font is stubbed locally: no font service receives a request.
+    if(url.origin==='https://fonts.googleapis.com'&&url.pathname==='/css2'&&request.method()==='GET')
+      return route.fulfill({status:200,contentType:'text/css',body:'/* offline font fallback */'});
     if(url.origin!==origin||url.pathname.startsWith('/.netlify/')||!['GET','HEAD'].includes(request.method())){
      blocked.push(url.origin+url.pathname);return route.abort();
     }
