@@ -1,9 +1,13 @@
 import {initCustomerAccount,requireCustomer,customerToken} from './customer-account.js';
 import {el,btn,field,check,dialog,notice} from './ui.js';
-import {formatMoney,id,assert,available,localDate,money} from './domain.js';
+import {formatMoney as domainFormatMoney,id,assert,available,localDate,money} from './domain.js';
 import {phoneNumber} from './customer-domain.js';
 import * as store from './store.js';
 import * as service from './service.js';
+export function formatShopMoney(halalas){return new Intl.NumberFormat('en-US',{minimumFractionDigits:halalas%100?2:0,maximumFractionDigits:2}).format(halalas/100)+' ر.س';}
+const formatMoney=n=>document.body.classList.contains('shop-page')?formatShopMoney(n):domainFormatMoney(n);
+function shopIcon(kind){const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');for(const [k,v]of Object.entries({viewBox:'0 0 24 24',width:'22',height:'22',fill:'none',stroke:'currentColor','stroke-width':'1.7','aria-hidden':'true',focusable:'false'}))svg.setAttribute(k,v);const paths={cart:['M3 3h2l2 13h12l2-9H6','M9 20h.01M18 20h.01'],account:['M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0','M4 21v-2a8 8 0 0 1 16 0v2'],instagram:['M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4','M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0','M17.5 6.5h.01']};for(const d of paths[kind]){const path=document.createElementNS(ns,'path');path.setAttribute('d',d);path.setAttribute('stroke-linecap','round');path.setAttribute('stroke-linejoin','round');svg.append(path);}return svg;}
+function decorateTopButton(button,kind,label){button.classList.add('shop-icon-button');button.setAttribute('aria-label',label);button.setAttribute('title',label);button.replaceChildren(shopIcon(kind),el('span',{class:'top-label'},label));}
 const endpoint='/.netlify/functions/shop-orders';
 export async function orderApi(data,admin=false){
  if(store.demo){
@@ -20,8 +24,8 @@ export async function orderApi(data,admin=false){
 }
 const key='temo-shop-cart-v1'+(store.demo?'-demo':'');let cart=[];try{const a=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(a))cart=a.slice(0,20);}catch{}
 let catalog=()=>[],badge;
-const persist=()=>{try{localStorage.setItem(key,JSON.stringify(cart));}catch{}if(badge)badge.textContent='سلة الطلب ('+cart.reduce((s,i)=>s+i.qty,0)+')';};
-export function initCheckout(getProducts){catalog=getProducts;if(!store.demo)initCustomerAccount(showMyOrders);badge=btn('سلة الطلب',openCart,'button primary');document.querySelector('.topbar').append(badge);persist();const parts=location.hash.match(/^#request=([\w-]+)&token=([\w-]+)$/);if(parts)showStatus(parts[1],parts[2]);}
+const persist=()=>{try{localStorage.setItem(key,JSON.stringify(cart));}catch{}if(badge){const count=cart.reduce((s,i)=>s+i.qty,0);badge.setAttribute('aria-label','سلة الطلب ('+count+')');badge.querySelector('.cart-count').textContent=String(count);badge.querySelector('.cart-count').hidden=count===0;}};
+export function initCheckout(getProducts){catalog=getProducts;const top=document.querySelector('.topbar');if(!store.demo){initCustomerAccount(showMyOrders);decorateTopButton(top.lastElementChild,'account','حسابي / طلباتي');}else{const demoAccount=btn('حسابي / طلباتي',()=>dialog('الحساب في المعاينة',el('p',{},'تسجيل الدخول ومتابعة الحساب متاحان في المتجر الفعلي. الطلبات هنا تجريبية فقط.')));decorateTopButton(demoAccount,'account','حسابي / طلباتي');top.append(demoAccount);}const instagram=top.querySelector('a[target="_blank"]');if(instagram)decorateTopButton(instagram,'instagram','Instagram');badge=btn('سلة الطلب',openCart,'button primary');decorateTopButton(badge,'cart','سلة الطلب');badge.append(el('span',{class:'cart-count','aria-hidden':'true'}));top.append(badge);persist();const parts=location.hash.match(/^#request=([\w-]+)&token=([\w-]+)$/);if(parts)showStatus(parts[1],parts[2]);}
 export function addToCart(p,v,qty){assert(v&&v.price>0,'السعر غير جاهز للطلب.');assert(Number.isSafeInteger(qty)&&qty>0&&qty<=99,'أدخل كمية صحيحة من 1 إلى 99.');const item=cart.find(i=>i.productId===p.id&&i.variantId===v.id);assert((item?.qty||0)+qty<=v.available,'الكمية المطلوبة غير متاحة.');assert(item||cart.length<20,'الحد الأقصى 20 صنفاً.');if(item){item.qty+=qty;item.price=v.price;}else cart.push({productId:p.id,variantId:v.id,qty,price:v.price,name:p.name,type:v.type});persist();notice('أُضيفت إلى سلة الطلب.');}
 export function openCart(){
  const content=el('div',{class:'stack'});let stale=false;
