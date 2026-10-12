@@ -53,6 +53,17 @@ try{
   });
   await page.reload();
   await page.getByRole('button',{name:'نباتاتي',exact:true}).click();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'collection overflow');
+  assert.equal(await page.locator('.collection-card').count(),3);
+  assert.equal(await page.locator('.collection-more[open]').count(),0);
+  assert.ok(await page.locator('.collection-card').first().evaluate(e=>e.getBoundingClientRect().height)<300,'compact card height');
+  await page.screenshot({path:path.join(out,'admin-collection-'+viewport.width+'.png'),fullPage:true});
+  await page.getByRole('searchbox',{name:'بحث النباتات'}).fill('Frydek');
+  assert.equal(await page.locator('.collection-card').count(),1);
+  await page.getByText('الأصناف والإجراءات',{exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'إضافة إنتاج',exact:true}).isVisible(),true);
+  await page.getByRole('searchbox',{name:'بحث النباتات'}).fill('');
+
   await page.getByRole('article').filter({has:page.getByRole('heading',{name:'Alocasia Frydek Variegata',exact:true})}).getByRole('button',{name:'فتح ملف النبتة'}).click();
   await page.getByText('تكلفة الأصل:',{exact:false}).waitFor();
   assert.equal(await page.getByText('غير مطروح للبيع',{exact:true}).count(),1);
