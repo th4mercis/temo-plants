@@ -1,10 +1,10 @@
 const base='https://temoplants.com';
 const escape=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function loadProduct(id){
- const [{initializeApp,cert,getApps},{getFirestore}]=await Promise.all([import('firebase-admin/app'),import('firebase-admin/firestore')]);
- const c=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT||'{}');if(c.project_id!=='temo-plants')throw Error('config');
- const app=getApps().find(a=>a.name==='share-temo')||initializeApp({credential:cert(c)},'share-temo');
- return (await getFirestore(app).doc('tp2_publicProducts/'+id).get()).data();
+ // Read only the same published projection available to storefront visitors.
+ const r=await fetch('https://firestore.googleapis.com/v1/projects/temo-plants/databases/(default)/documents/tp2_publicProducts/'+encodeURIComponent(id),{signal:AbortSignal.timeout(8000)});
+ if(r.status===404||r.status===403)return undefined;if(!r.ok)throw Error('unavailable');
+ const {fields:f}=await r.json();return {published:f?.published?.booleanValue===true,name:f?.name?.stringValue||'',description:f?.description?.stringValue||'',actualPhoto:f?.actualPhoto?.booleanValue===true,image:f?.image?.stringValue||''};
 }
 export function createHandler(load=loadProduct){return async event=>{
  const headers={'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
