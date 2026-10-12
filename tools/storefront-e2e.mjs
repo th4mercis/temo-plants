@@ -29,11 +29,12 @@ const results=[];
 try{
  browser=await chromium.launch({headless:true,...(process.env.E2E_BROWSER_PATH?{executablePath:process.env.E2E_BROWSER_PATH}:{})});
  for(const viewport of [{width:375,height:812},{width:1366,height:900}]){
-  for(const scenario of ['layout-navigation','cart-checkout','multiple-variants']){
+  for(const scenario of ['layout-navigation','cart-checkout','multiple-variants','share-sold-out']){
    const context=await browser.newContext({viewport,reducedMotion:'reduce',serviceWorkers:'block'});
    const blocked=[],errors=[];
    await context.route('**/*',route=>{
     const request=route.request(),url=new URL(request.url());
+    if(url.hostname==='gc.kis.v2.scr.kaspersky-labs.com')return route.abort();
     // Optional web font is stubbed locally: no font service receives a request.
     if(url.origin==='https://fonts.googleapis.com'&&url.pathname==='/css2'&&request.method()==='GET')
       return route.fulfill({status:200,contentType:'text/css',body:'/* offline font fallback */'});
@@ -45,6 +46,10 @@ try{
    if(scenario==='multiple-variants')await context.addInitScript(()=>{
     const p={id:'fixture-multi',name:'Test Multi Hoya',genus:'Hoya',published:true,image:'',updatedAt:'2026-01-01',variants:[{id:'a',type:'كورمة',price:10000,available:2},{id:'b',type:'كتنج',price:20000,available:3}]};
     localStorage.setItem('temo-v2-demo-only',JSON.stringify({['publicProducts/'+p.id]:p}));
+   });
+   if(scenario==='share-sold-out')await context.addInitScript(()=>{
+    const p={id:'fixture-empty',name:'Sold out Hoya',genus:'Hoya',published:true,image:'',variants:[{id:'a',type:'كتنج',price:10000,available:0}]};
+    localStorage.setItem('temo-v2-demo-only',JSON.stringify({['publicProducts/'+p.id]:p,['publicProducts/private']:{...p,id:'private',name:'Private mother',published:false}}));
    });
    const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
    const name=`${viewport.width}-${scenario}`;
@@ -89,6 +94,27 @@ try{
      await page.getByRole('button',{name:'سلة الطلب (0)',exact:true}).waitFor();
      await page.getByRole('link',{name:'متابعة حالة الطلب',exact:true}).click();
      await page.getByText('بانتظار مراجعة المتجر',{exact:true}).waitFor();
+    }else if(scenario==='share-sold-out'){
+     assert.equal(await page.getByText('Private mother',{exact:true}).count(),0);
+     await page.getByRole('button',{name:'غير متوفر — عرض التفاصيل',exact:true}).first().click();
+     assert.equal(await page.getByRole('button',{name:'أضف إلى سلة الطلب',exact:true}).isDisabled(),true);
+     await page.getByRole('button',{name:'مشاركة النبتة',exact:true}).click();
+     const wa=new URL(await page.getByRole('link',{name:'مشاركة عبر واتساب'}).getAttribute('href')); const u=new URL(wa.searchParams.get('text').split('\n').pop());
+     assert.equal(u.searchParams.get('product'),'fixture-empty');assert.equal(u.searchParams.get('demo'),'1');
+     assert.equal(u.searchParams.has('genus'),false);
+     assert.equal(await page.getByRole('button',{name:'نسخ الرابط',exact:true}).isVisible(),true);
+     await context.grantPermissions(['clipboard-read','clipboard-write']);
+     await page.getByRole('button',{name:'نسخ الرابط',exact:true}).click();
+     await page.getByText('تم نسخ الرابط',{exact:true}).waitFor();
+     assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),u.href);
+     await page.keyboard.press('Escape');
+     assert.equal(await page.locator('#product-share-options').isVisible(),false);
+     await page.getByRole('button',{name:'مشاركة النبتة',exact:true}).click();
+     await page.locator('.detail-name').click();
+     assert.equal(await page.locator('#product-share-options').isVisible(),false);
+     await page.getByRole('button',{name:'مشاركة النبتة',exact:true}).click();
+     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+     await page.screenshot({path:path.join(out,name+'.png'),fullPage:true});
     }else{
      await page.getByRole('button',{name:'اختر الصنف',exact:true}).first().click();
      assert.match(page.url(),/product=fixture-multi/);
@@ -110,4 +136,4 @@ try{
  await browser?.close();await new Promise(resolve=>server.close(resolve));
  await writeFile(path.join(out,'results.json'),JSON.stringify({at:new Date().toISOString(),root,results},null,2));
 }
-if(results.length!==6||results.some(r=>!r.passed))process.exitCode=1;
+if(results.length!==8||results.some(r=>!r.passed))process.exitCode=1;
