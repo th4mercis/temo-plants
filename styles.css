@@ -42,3 +42,24 @@
 .admin-main .button{min-height:44px}
 .admin-main .button:focus-visible{outline:3px solid var(--green);outline-offset:3px}
 @media(max-width:760px){.admin-main .admin-tasks{grid-template-columns:1fr}.admin-main .plant-overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.admin-main .plant-overview strong{font-size:18px}}
+
+/* Compact collection cards; sale cards and plant detail retain their layout. */
+.admin-main .collection-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.admin-main .collection-card{padding:14px;margin:0;border-radius:14px;display:grid;gap:10px}
+.admin-main .collection-heading{display:flex;gap:12px;align-items:center;min-width:0}
+.admin-main .collection-heading>div:last-child{min-width:0;flex:1}
+.admin-main .collection-heading h2{font-size:16px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.admin-main .collection-heading p{font-size:12px;line-height:1.5;margin-block:4px 0}
+.admin-main .collection-thumb{flex:0 0 64px;block-size:64px;border-radius:10px;overflow:hidden;background:var(--bg);display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.admin-main .collection-thumb img{inline-size:100%;block-size:100%;object-fit:cover}
+.admin-main .collection-summary{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;font-size:13px}
+.admin-main .collection-summary .tag{margin-inline-start:auto;font-size:12px}
+.admin-main .collection-open{width:100%;padding:8px 12px}
+.admin-main .collection-more{border-block-start:1px solid var(--line)}
+.admin-main .collection-more>summary{padding:10px 0;min-block-size:44px;font-size:13px;box-sizing:border-box}
+.admin-main .collection-more>summary:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.admin-main .collection-more .actions{margin-block-start:12px;gap:8px}
+.admin-main .collection-more .row{padding-block:8px;border-block-end:1px solid var(--line);font-size:13px}
+.admin-main .collection-filters>input{flex:1;min-width:0}
+@media(min-width:1400px){.admin-main .collection-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.admin-main .collection-grid{grid-template-columns:1fr}.admin-main .collection-filters>input{flex-basis:100%}.admin-main .collection-card{padding:12px;gap:8px}}
