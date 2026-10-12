@@ -98,11 +98,21 @@ try{
      assert.equal(await page.getByText('Private mother',{exact:true}).count(),0);
      await page.getByRole('button',{name:'غير متوفر — عرض التفاصيل',exact:true}).first().click();
      assert.equal(await page.getByRole('button',{name:'أضف إلى سلة الطلب',exact:true}).isDisabled(),true);
-     await page.getByRole('button',{name:'مشاركة النبتة ↗',exact:true}).click();
-     const u=new URL(await page.getByRole('textbox',{name:'رابط النبتة'}).inputValue());
+     await page.getByRole('button',{name:'مشاركة النبتة',exact:true}).click();
+     const wa=new URL(await page.getByRole('link',{name:'مشاركة عبر واتساب'}).getAttribute('href')); const u=new URL(wa.searchParams.get('text').split('\n').pop());
      assert.equal(u.searchParams.get('product'),'fixture-empty');assert.equal(u.searchParams.get('demo'),'1');
      assert.equal(u.searchParams.has('genus'),false);
      assert.equal(await page.getByRole('button',{name:'نسخ الرابط',exact:true}).isVisible(),true);
+     await context.grantPermissions(['clipboard-read','clipboard-write']);
+     await page.getByRole('button',{name:'نسخ الرابط',exact:true}).click();
+     await page.getByText('تم نسخ الرابط',{exact:true}).waitFor();
+     assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),u.href);
+     await page.keyboard.press('Escape');
+     assert.equal(await page.locator('#product-share-options').isVisible(),false);
+     await page.getByRole('button',{name:'مشاركة النبتة',exact:true}).click();
+     await page.locator('.detail-name').click();
+     assert.equal(await page.locator('#product-share-options').isVisible(),false);
+     await page.getByRole('button',{name:'مشاركة النبتة',exact:true}).click();
      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
      await page.screenshot({path:path.join(out,name+'.png'),fullPage:true});
     }else{
