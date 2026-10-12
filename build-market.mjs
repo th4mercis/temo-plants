@@ -10,7 +10,7 @@ for(const file of files)await copyFile(file,path.join(target,file));
 await mkdir('dist/assets',{recursive:true});
 for(const file of ["brand-leaf-52b3102d7d.webp","brand-leaf.jpeg","brand-logo-d9723ed1a9.webp","brand-logo.jpeg","brand-pattern-675169bd51.webp","brand-pattern-ba825aad1d.webp","brand-pattern.jpeg"])await copyFile(file,'dist/assets/'+file);
 await mkdir('netlify/functions',{recursive:true});
-for(const [name,file]of Object.entries({"order-notifications":"order-notifications-source.mjs","market-estimate":"market-function-source.mjs","shop-orders":"shop-orders-source.mjs","assistant":"assistant-source.mjs","admin-commands":"admin-commands-source.mjs"}))await copyFile(file,'netlify/functions/'+name+'.mjs');
+for(const [name,file]of Object.entries({"product-share":"product-share-source.mjs","order-notifications":"order-notifications-source.mjs","market-estimate":"market-function-source.mjs","shop-orders":"shop-orders-source.mjs","assistant":"assistant-source.mjs","admin-commands":"admin-commands-source.mjs"}))await copyFile(file,'netlify/functions/'+name+'.mjs');
 for(const file of files.filter(f=>f.endsWith('.js'))){
  const source=await readFile('dist/'+file,'utf8');
  for(const match of source.matchAll(/(?:from\s*|import\s*\()(['"])(\.\/?[^'"]+)\1/g)){
@@ -19,6 +19,7 @@ for(const file of files.filter(f=>f.endsWith('.js'))){
   await stat(imported);
  }
 }
-execFileSync(process.execPath,['--test',...["deploy-security.test.mjs","deploy-customer-accounts.test.mjs","deploy-receipts.test.mjs","deploy-domain.test.mjs","deploy-admin-clarity.test.mjs"]],{stdio:'inherit'});
+execFileSync(process.execPath,['--test',...["deploy-security.test.mjs","deploy-customer-accounts.test.mjs","deploy-receipts.test.mjs","deploy-domain.test.mjs","deploy-admin-clarity.test.mjs","deploy-share.test.mjs"]],{stdio:'inherit'});
 execFileSync(process.execPath,['--no-experimental-require-module','--input-type=module','-e',"const {initializeApp}=await import('firebase-admin/app');await import('firebase-admin/auth');const {getFirestore}=await import('firebase-admin/firestore');getFirestore(initializeApp({projectId:'build-smoke-test'}));"],{stdio:'inherit'});
 console.log('Verified build: public imports and backend security regression tests.');
+
