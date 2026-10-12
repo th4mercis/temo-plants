@@ -41,6 +41,7 @@ try{
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
   await page.goto(origin+'/temo-plants.html?demo=1');
   await page.getByRole('heading',{name:'يحتاج إجراء',exact:true}).waitFor();
+  assert.match(await page.locator('.admin-task').filter({hasText:'أصول تحتاج توثيق سعر الشراء'}).innerText(),/3 سجل/);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'dashboard overflow');
   await page.screenshot({path:path.join(out,'admin-dashboard-'+viewport.width+'.png'),fullPage:true});
   await page.evaluate(()=>{
