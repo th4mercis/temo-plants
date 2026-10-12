@@ -54,8 +54,10 @@ function renderProducts(){
  const typeFilter=select('تصفية حسب النوع','plant-filter',[['','كل الأنواع'],...Array.from(new Set([...genera.map(([g])=>g),...state.products.map(p=>p.genus)].filter(Boolean).map(genusKey))).map(g=>[genusKey(g),genusSearch(g)])],plantFilter),input=el('input',{type:'search',placeholder:'ابحث باسم النبتة أو نوعها…','aria-label':'بحث النباتات',value:search}),container=el('div',{class:'plant-grid collection-grid'}),count=el('p',{class:'hint',role:'status'});
  function draw(){
   const list=state.products.filter(p=>!p.archived&&(!plantFilter||genusKey(p.genus)===plantFilter)&&searchKey([p.name,p.code,genusSearch(p.genus)].join(' ')).includes(searchKey(search))).sort((a,b)=>a.name.localeCompare(b.name));
-  count.textContent=list.length+' نبتة · مرتبة حسب الاسم';
-  container.replaceChildren(...list.map(p=>{
+  const shelves=!search.trim()&&!plantFilter;
+  count.textContent=list.length+(shelves?' نبتة · اسحب الصف عرضياً لاستعراض النباتات':' نبتة · مرتبة حسب الاسم');
+  container.classList.toggle('collection-shelves',shelves);
+  const card=p=>{
    const variants=p.variants.filter(v=>!D.variantHidden(v)),qty=variants.reduce((n,v)=>n+v.qty,0),reserved=variants.reduce((n,v)=>n+v.reserved,0),image=D.safeImage(p.image),live=p.published&&variants.some(v=>v.sell&&D.available(v)>0);
    const photo=el('div',{class:'collection-thumb','aria-hidden':'true'},image?el('img',{src:image,alt:'',width:64,height:64,loading:'lazy',onError:e=>{e.target.hidden=true;e.target.parentElement.append('بلا صورة');}}):'بلا صورة');
    return el('article',{class:'panel plant-card collection-card'},
@@ -65,11 +67,22 @@ function renderProducts(){
     el('details',{class:'collection-more'},el('summary',{},'الأصناف والإجراءات'),
      el('div',{class:'stack'},...variants.map(v=>el('div',{class:'row'},el('strong',{},variantLabel(v.type)),el('span',{},v.qty+' موجود · '+v.reserved+' محجوز'),el('span',{class:'tag'},variantStates[variantState(p,v)]),v.qty===0&&v.reserved===0?btn('إخفاء الصنف الفارغ',()=>variantVisibility(p,v,true),'button subtle'):null))),
      el('div',{class:'actions'},btn('إضافة إنتاج',()=>addProduction(p)),btn('بيانات النبتة',()=>productForm(p)),btn('إدارة عروض البيع',()=>{saleFilter='all';saleSearch=p.name;saleGenus='';saleType='';navigate('sale');}),btn('شراء إضافي / حركة مخزون',()=>stockForm(p)),btn('أرشفة',()=>archiveProduct(p),'button subtle'),...p.variants.filter(D.variantHidden).map(v=>btn('استعادة الصنف المخفي: '+v.type,()=>variantVisibility(p,v,false))))));
-  }));
+  };
+  if(shelves){
+   const keys=[...new Set(['alocasia','hoya','anthurium',...genera.map(([g])=>genusKey(g)),...list.map(p=>genusKey(p.genus))])];
+   container.replaceChildren(...keys.filter(key=>list.some(p=>genusKey(p.genus)===key)).map((key,index)=>{
+    const plants=list.filter(p=>genusKey(p.genus)===key),title=genusSearch(key)||'غير مصنف',id='collection-shelf-'+index;
+    const track=el('div',{class:'collection-track',tabindex:'0','aria-label':'نباتات '+title},...plants.map(card));
+    const move=step=>track.scrollBy({left:step*(getComputedStyle(track).direction==='rtl'?-1:1)*track.clientWidth*.8,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+    const prev=btn('→',()=>move(-1),'button collection-nav'),next=btn('←',()=>move(1),'button collection-nav');
+    prev.setAttribute('aria-label','السابق في '+title);next.setAttribute('aria-label','التالي في '+title);
+    return el('section',{class:'collection-shelf','aria-labelledby':id},el('div',{class:'collection-shelf-head'},el('h2',{id},title+' · '+plants.length),btn('عرض الكل',()=>{plantFilter=key;typeFilter.querySelector('select').value=key;draw();input.focus({preventScroll:true});},'button')),el('div',{class:'collection-shelf-controls'},prev,next),track);
+   }));
+  }else container.replaceChildren(...list.map(card));
   if(!list.length)container.append(el('p',{class:'empty'},'لا توجد نباتات مطابقة. جرّب تغيير البحث أو النوع.'));
  }
  typeFilter.addEventListener('change',()=>{plantFilter=typeFilter.querySelector('select').value;draw();});input.addEventListener('input',()=>{search=input.value;draw();});draw();
- return [head('نباتاتي','مجموعة نباتاتك مرتبة بالاسم. افتح ملف النبتة للتفاصيل أو وسّع الأصناف والإجراءات.',[btn('+ إضافة نبتة وشرائها',()=>newPlant(),'button primary')]),el('div',{class:'filters collection-filters'},input,typeFilter),count,container];
+ return [head('نباتاتي','استعرض كل جنس في صف عرضي، أو استخدم البحث والتصفية للوصول إلى نبتة.',[btn('+ إضافة نبتة وشرائها',()=>newPlant(),'button primary')]),el('div',{class:'filters collection-filters'},input,typeFilter),count,container];
 }
 function productForm(old){const p=old||{id:D.id(),name:'',genus:'Alocasia',code:'TP-'+D.id().slice(0,6).toUpperCase(),internalNotes:'',publicDescription:'',care:'',size:'',photoDate:'',image:'',actualPhoto:true,published:false,archived:false,revision:0,variants:[{id:D.id(),type:'شتلة',qty:0,reserved:0,cost:0,price:0,sell:true}]};let variants=structuredClone(p.variants);const list=el('div',{class:'stack full'});function redraw(){list.replaceChildren(...variants.map((v,i)=>el('div',{class:'line-item form-grid',hidden:D.variantHidden(v)?'':null},field('الصنف','type-'+i,'text',v.type,{required:'',maxlength:'100'}),el('p',{class:'hint'},`الموجود: ${v.qty} · المحجوز: ${v.reserved}`))));}redraw();const content=el('div',{class:'form-grid'},field('اسم النبتة','name','text',p.name,{required:'',maxlength:'200'}),genusField(p.genus),field('الكود الثابت','code','text',p.code,{readonly:''}),field('الحجم / مرحلة النمو','size','text',p.size,{maxlength:'200'}),field('الوصف العام للمتجر','publicDescription','textarea',p.publicDescription,{maxlength:'4000'}),field('ملاحظات داخلية — لا تُنشر','internalNotes','textarea',p.internalNotes,{maxlength:'4000'}),field('العناية المختصرة','care','textarea',p.care,{maxlength:'1000'}),field('تاريخ الصورة','photoDate','date',p.photoDate),field('صورة جديدة','image','file','',{accept:'image/*'}),check('الصورة للقطعة الفعلية','actualPhoto',p.actualPhoto),el('p',{class:'hint full'},'إعداد السعر والنشر متاح لكل صنف في ملف النبتة أو قسم المعروض للبيع.'),el('p',{class:'hint full'},'المنتج الجديد يبدأ برصيد صفر. أضف رصيداً افتتاحياً أو مشتريات من «حركة مخزون». الصور تُضغط وترفع إلى Storage.'),list);content.append(btn('+ صنف آخر',()=>{const f=list.closest('form');variants.forEach((v,i)=>{v.type=f.elements['type-'+i].value;});if(variants.length>=30)return;variants.push({id:D.id(),type:'كورمة',qty:0,reserved:0,cost:0,price:0,sell:false});redraw();}));const op=D.id();dialog(old?'تعديل النبتة':'نبتة جديدة',content,async f=>{let image=p.image;const file=f.get('image');if(file?.size)image=await store.uploadImage(file);await api.saveProduct({...p,name:V(f,'name'),genus:readGenus(f),size:V(f,'size'),publicDescription:V(f,'publicDescription'),internalNotes:V(f,'internalNotes'),care:V(f,'care'),photoDate:V(f,'photoDate'),actualPhoto:f.has('actualPhoto'),published:p.published,image,variants:variants.map((v,i)=>({...v,type:V(f,'type-'+i)}))},op);});}
 function archiveProduct(p){dialog('أرشفة '+p.name,el('p',{},'تتاح الأرشفة عندما يكون المخزون والمحجوز صفراً. يبقى التاريخ محفوظاً.'),()=>api.saveProduct({...p,archived:true,published:false}));}

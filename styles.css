@@ -63,3 +63,16 @@
 .admin-main .collection-filters>input{flex:1;min-width:0}
 @media(min-width:1400px){.admin-main .collection-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.admin-main .collection-grid{grid-template-columns:1fr}.admin-main .collection-filters>input{flex-basis:100%}.admin-main .collection-card{padding:12px;gap:8px}}
+
+/* Genus shelves in My Plants only. */
+.admin-main .collection-grid.collection-shelves{display:block;min-width:0}
+.admin-main .collection-shelf{margin-block-end:24px;min-width:0}
+.admin-main .collection-shelf-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-block-end:8px}
+.admin-main .collection-shelf-head h2{font-size:19px;margin:0}
+.admin-main .collection-track{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;overscroll-behavior-x:contain;padding-block:4px 12px;min-width:0;scrollbar-width:thin}
+.admin-main .collection-track>.collection-card{flex:0 0 270px;scroll-snap-align:start;align-self:flex-start;box-sizing:border-box}
+.admin-main .collection-track:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.admin-main .collection-shelf-controls{display:flex;gap:8px;justify-content:flex-end;margin-block-end:8px}
+.admin-main .collection-nav{min-width:44px}
+@media(hover:none),(pointer:coarse){.admin-main .collection-shelf-controls{display:none}}
+@media(max-width:760px){.admin-main .collection-track>.collection-card{flex-basis:82%}.admin-main .collection-shelf-head h2{font-size:17px}}
