@@ -81,6 +81,26 @@ try{
   await page.getByRole('dialog').waitFor({state:'hidden'});
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('temo-v2-demo-only'))['products/demo-1']);
   assert.equal(saved.variants[0].sell,false);assert.equal(saved.variants[0].qty,4);assert.equal(saved.variants[0].cost,10800);assert.equal(saved.published,false);
+  await page.evaluate(()=>{
+   const k='temo-v2-demo-only',d=JSON.parse(localStorage.getItem(k)),p=d['products/demo-0'];
+   for(let i=0;i<7;i++){const id='shelf-'+i;d['products/'+id]={...p,id,name:'Shelf Plant '+i,genus:i===6?'Hoya':'Alocasia'};}
+   localStorage.setItem(k,JSON.stringify(d));
+  });
+  await page.reload();await page.getByRole('button',{name:'نباتاتي',exact:true}).click();
+  const shelves=page.locator('.collection-shelf'),track=page.locator('.collection-track').first();
+  assert.match(await shelves.nth(0).locator('.collection-shelf-head h2').innerText(),/Alocasia/);
+  assert.match(await shelves.nth(1).locator('.collection-shelf-head h2').innerText(),/Hoya/);
+  assert.match(await shelves.nth(2).locator('.collection-shelf-head h2').innerText(),/Anthurium/);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  assert.equal(await track.evaluate(e=>e.scrollWidth>e.clientWidth),true);
+  await shelves.first().getByRole('button',{name:/التالي/}).click();
+  assert.ok(await track.evaluate(e=>e.scrollLeft)<0,'RTL next scroll');
+  await page.screenshot({path:path.join(out,'admin-shelves-'+viewport.width+'.png'),fullPage:true});
+  await shelves.first().getByRole('button',{name:'عرض الكل',exact:true}).click();
+  assert.equal(await page.locator('.collection-shelf').count(),0);
+  assert.equal(await page.locator('.collection-card').count(),7);
+  await page.getByRole('combobox',{name:'تصفية حسب النوع'}).selectOption('');
+  assert.equal(await page.locator('.collection-shelf').count(),4);
   assert.deepEqual(errors,[]);assert.deepEqual(blocked,[]);
   console.log('PASS admin workflow '+viewport.width);
   await context.close();
