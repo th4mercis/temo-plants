@@ -29,3 +29,50 @@
 .order-status{display:inline-block;padding:6px 10px;border-radius:9px;background:var(--order-bg);color:var(--order-ink);font-weight:700;font-size:14px}
 .order-row>td{background:var(--order-bg)}.order-row>td:first-child{border-inline-start:4px solid var(--order-line)}
 @media(max-width:640px){.order-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.order-stat{padding:10px;min-height:86px;font-size:14px;gap:2px 8px}.order-stat strong{font-size:23px}.order-stat-label{font-size:13px}.order-filters>input{flex-basis:100%}.order-all-filter{width:100%}}
+
+/* Admin-only clarity: keep the customer storefront unchanged. */
+.admin-main .admin-tasks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.admin-main .admin-task{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.admin-main .admin-task p{margin-block:4px 0}
+.admin-main .plant-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.admin-main .plant-overview>div{display:flex;flex-direction:column;gap:8px;min-width:0}
+.admin-main .plant-overview strong{font-size:20px;overflow-wrap:anywhere}
+.admin-main .plant-overview small{color:var(--muted);line-height:1.6}
+.admin-main .plant-card,.admin-main .plant-hub>section{min-width:0;overflow-wrap:anywhere}
+.admin-main .button{min-height:44px}
+.admin-main .button:focus-visible{outline:3px solid var(--green);outline-offset:3px}
+@media(max-width:760px){.admin-main .admin-tasks{grid-template-columns:1fr}.admin-main .plant-overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.admin-main .plant-overview strong{font-size:18px}}
+
+/* Compact collection cards; sale cards and plant detail retain their layout. */
+.admin-main .collection-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.admin-main .collection-card{padding:14px;margin:0;border-radius:14px;display:grid;gap:10px}
+.admin-main .collection-heading{display:flex;gap:12px;align-items:center;min-width:0}
+.admin-main .collection-heading>div:last-child{min-width:0;flex:1}
+.admin-main .collection-heading h2{font-size:16px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.admin-main .collection-heading p{font-size:12px;line-height:1.5;margin-block:4px 0}
+.admin-main .collection-thumb{flex:0 0 64px;block-size:64px;border-radius:10px;overflow:hidden;background:var(--bg);display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.admin-main .collection-thumb img{inline-size:100%;block-size:100%;object-fit:cover}
+.admin-main .collection-summary{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;font-size:13px}
+.admin-main .collection-summary .tag{margin-inline-start:auto;font-size:12px}
+.admin-main .collection-open{width:100%;padding:8px 12px}
+.admin-main .collection-more{border-block-start:1px solid var(--line)}
+.admin-main .collection-more>summary{padding:10px 0;min-block-size:44px;font-size:13px;box-sizing:border-box}
+.admin-main .collection-more>summary:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.admin-main .collection-more .actions{margin-block-start:12px;gap:8px}
+.admin-main .collection-more .row{padding-block:8px;border-block-end:1px solid var(--line);font-size:13px}
+.admin-main .collection-filters>input{flex:1;min-width:0}
+@media(min-width:1400px){.admin-main .collection-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.admin-main .collection-grid{grid-template-columns:1fr}.admin-main .collection-filters>input{flex-basis:100%}.admin-main .collection-card{padding:12px;gap:8px}}
+
+/* Genus shelves in My Plants only. */
+.admin-main .collection-grid.collection-shelves{display:block;min-width:0}
+.admin-main .collection-shelf{margin-block-end:24px;min-width:0}
+.admin-main .collection-shelf-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-block-end:8px}
+.admin-main .collection-shelf-head h2{font-size:19px;margin:0}
+.admin-main .collection-track{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;overscroll-behavior-x:contain;padding-block:4px 12px;min-width:0;scrollbar-width:thin}
+.admin-main .collection-track>.collection-card{flex:0 0 270px;scroll-snap-align:start;align-self:flex-start;box-sizing:border-box}
+.admin-main .collection-track:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.admin-main .collection-shelf-controls{display:flex;gap:8px;justify-content:flex-end;margin-block-end:8px}
+.admin-main .collection-nav{min-width:44px}
+@media(hover:none),(pointer:coarse){.admin-main .collection-shelf-controls{display:none}}
+@media(max-width:760px){.admin-main .collection-track>.collection-card{flex-basis:82%}.admin-main .collection-shelf-head h2{font-size:17px}}

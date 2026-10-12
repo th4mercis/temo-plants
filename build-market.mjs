@@ -19,6 +19,6 @@ for(const file of files.filter(f=>f.endsWith('.js'))){
   await stat(imported);
  }
 }
-execFileSync(process.execPath,['--test',...["deploy-security.test.mjs","deploy-customer-accounts.test.mjs","deploy-receipts.test.mjs","deploy-domain.test.mjs"]],{stdio:'inherit'});
+execFileSync(process.execPath,['--test',...["deploy-security.test.mjs","deploy-customer-accounts.test.mjs","deploy-receipts.test.mjs","deploy-domain.test.mjs","deploy-admin-clarity.test.mjs"]],{stdio:'inherit'});
 execFileSync(process.execPath,['--no-experimental-require-module','--input-type=module','-e',"const {initializeApp}=await import('firebase-admin/app');await import('firebase-admin/auth');const {getFirestore}=await import('firebase-admin/firestore');getFirestore(initializeApp({projectId:'build-smoke-test'}));"],{stdio:'inherit'});
 console.log('Verified build: public imports and backend security regression tests.');
