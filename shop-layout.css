@@ -97,3 +97,15 @@
 @media(prefers-reduced-motion:reduce){.shop-page *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 
 .shop-page .product-visual:has(.last-piece) .genus-tag{inset-block-start:40px}
+
+.shop-page .product-share{display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-inline-size:100%}
+.shop-page .share-toggle,.shop-page .share-option{display:flex;align-items:center;justify-content:center;inline-size:46px;block-size:46px;min-block-size:46px;padding:10px;border-radius:50%;background:var(--surface);color:var(--green);border:1px solid var(--line);cursor:pointer}
+.shop-page .share-options{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:28px;padding:6px;background:var(--surface);box-shadow:0 4px 16px #0000000d}
+.shop-page .share-options[hidden],.shop-page .share-fallback[hidden]{display:none}
+.shop-page .share-options .share-option{border:0;color:inherit}
+.shop-page .product-share svg{inline-size:24px;block-size:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.shop-page .share-option:hover{background:var(--bg);color:var(--green)}
+.shop-page .share-toggle:focus-visible,.shop-page .share-option:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+.shop-page .share-status{font-size:13px;color:var(--green)}
+.shop-page .share-status:empty{display:none}
+.shop-page .share-fallback{max-inline-size:100%;inline-size:320px}
