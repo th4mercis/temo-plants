@@ -1,3 +1,4 @@
+import {createAdminMfa} from './admin-mfa.js';
 import {prepareImage} from './image-upload.js';
 import {firebaseConfig,LIVE_ENABLED} from './config.js';
 import {id} from './domain.js';
@@ -5,6 +6,7 @@ export const demo=new URLSearchParams(location.search).get('demo')==='1';
 export const collections=['customers','products','orders','purchases','expenses','cash','movements','supplies','shipments','audit','legacy'];
 const prefix='tp2_',demoKey='temo-v2-demo-only';
 let sdk,db,auth,storage,listeners=[],user=null;
+export let adminMfa;
 function readDemo(){try{return JSON.parse(localStorage.getItem(demoKey))||{};}catch{return {};}}
 function demoSeed(){if(localStorage.getItem(demoKey))return;const d={};const names=[['Alocasia Frydek Variegata','Alocasia',29500],['Anthurium crystallinum','Anthurium',24000],['Monstera Thai Constellation','Monstera',38000]];names.forEach(([name,genus,price],i)=>{const p={id:'demo-'+i,code:'TP-00'+(i+1),name,genus,publicDescription:'بيانات تجريبية لاستعراض تجربة المتجر. استفسر عن صور القطعة وحالة الجذور قبل الطلب.',internalNotes:'مثال داخلي لا يظهر في المتجر',care:'إضاءة ساطعة غير مباشرة، وري حسب جفاف الوسط.',size:'شتلة متأقلمة',image:'',photoDate:'',actualPhoto:false,published:true,archived:false,revision:1,updatedAt:new Date().toISOString(),variants:[{id:'v1',type:'شتلة',qty:3+i,reserved:0,cost:Math.round(price*.45),price,sell:true}]};d['products/'+p.id]=p;d['publicProducts/'+p.id]={id:p.id,code:p.code,name,genus,description:p.publicDescription,care:p.care,size:p.size,image:'',photoDate:'',actualPhoto:false,published:true,variants:[{id:'v1',type:'شتلة',price,available:3+i}],updatedAt:p.updatedAt};});localStorage.setItem(demoKey,JSON.stringify(d));}
 export async function connect({publicOnly=false}={}){
@@ -16,12 +18,12 @@ export async function connect({publicOnly=false}={}){
   sdk={...f,...a,...s};const instance=app.getApps().find(a=>a.name==='backup-only')||app.initializeApp(firebaseConfig,'backup-only');db=f.getFirestore(instance);
   // The public catalogue does not need an admin session or upload dependencies.
   if(publicOnly)return;
-  auth=a.initializeAuth(instance,{persistence:a.browserSessionPersistence});storage=s.getStorage(instance);storage.maxUploadRetryTime=80000;storage.maxOperationRetryTime=80000;
+  auth=a.initializeAuth(instance,{persistence:a.browserSessionPersistence});storage=s.getStorage(instance);adminMfa=createAdminMfa(sdk,auth);storage.maxUploadRetryTime=80000;storage.maxOperationRetryTime=80000;
 }
-export async function login(email,password){if(demo)return user;const r=await sdk.signInWithEmailAndPassword(auth,email,password);user=r.user;await checkAdmin();return user;}
-export async function checkAdmin(){if(demo)return true;const s=await sdk.getDoc(sdk.doc(db,'admins',auth.currentUser.uid));if(!s.exists()||s.data().active!==true){await sdk.signOut(auth);throw new Error('هذا الحساب غير مخوّل للإدارة. راجع خطوة إضافة UID في الدليل.');}user=auth.currentUser;return true;}
+export async function login(email,password){if(demo)return user;adminMfa.cancel();try{const r=await sdk.signInWithEmailAndPassword(auth,email,password);user=r.user;await checkAdmin();return user;}catch(error){if(adminMfa.capture(error))return null;throw error;}}
+export async function checkAdmin(){if(demo)return true;const s=await sdk.getDoc(sdk.doc(db,'admins',auth.currentUser.uid));if(!s.exists()||s.data().active!==true){await sdk.signOut(auth);throw new Error('هذا الحساب غير مخوّل للإدارة. راجع خطوة إضافة UID في الدليل.');}const token=await auth.currentUser.getIdTokenResult();if(token.claims.admin_mfa_required===true&&token.claims.firebase?.sign_in_second_factor!=='totp')throw new Error('يلزم تسجيل الدخول بتطبيق التحقق. إذا فقدت التطبيق، استخدم إجراء الاستعادة لدى مالك المشروع.');user=auth.currentUser;return true;}
 export function watchAuth(fn){if(demo){fn(user);return ()=>{};}return sdk.onAuthStateChanged(auth,fn);}
-export async function logout(){listeners.forEach(f=>f());listeners=[];if(!demo)await sdk.signOut(auth);user=null;}
+export async function logout(){adminMfa?.cancel();listeners.forEach(f=>f());listeners=[];if(!demo)await sdk.signOut(auth);user=null;}
 export const uid=()=>demo?'demo-owner':auth?.currentUser?.uid;
 export async function get(path){if(demo)return structuredClone(readDemo()[path]||null);const [c,i]=path.split('/');const s=await sdk.getDoc(sdk.doc(db,prefix+c,i));return s.exists()?s.data():null;}
 export async function getLegacy(){if(demo)return null;const s=await sdk.getDoc(sdk.doc(db,'temo','main'));return s.exists()?s.data():null;}
