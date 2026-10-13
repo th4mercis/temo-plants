@@ -34,7 +34,7 @@ export function openCart(){
  content.append(el('section',{class:'cart-line'},el('strong',{},i.name),el('p',{},i.type),quantityField,el('strong',{class:'money'},formatMoney(i.qty*i.price)),!valid?el('p',{class:'form-error'},'هذا الصنف أو الكمية لم يعد متاحاً؛ أزله وأضفه بالكمية الجديدة.'):null,changed?el('p',{class:'form-error'},'تغير سعر الوحدة إلى '+formatMoney(v.price)):null,changed?btn('اعتماد السعر الجديد',()=>{i.price=v.price;persist();openCart();}):null,btn('إزالة',()=>{cart=cart.filter(x=>x!==i);persist();openCart();},'button subtle')));if(!valid||changed)stale=true;
  }
  if(!cart.length)content.append(el('p',{class:'empty'},'سلتك فارغة. اختر نبتة وأضف الصنف الذي تريده.'));
- else {content.append(el('div',{class:'inline-total'},'قيمة النباتات: '+formatMoney(cart.reduce((s,i)=>s+i.qty*i.price,0))),el('p',{class:'hint'},'الشحن يُحدد عند مراجعة طلبك. لا تدفع الآن؛ إرسال الطلب لا يحجز الكمية حتى يؤكده المتجر.'));const next=btn('متابعة الطلب',()=>checkout(),'button primary');next.disabled=stale;content.append(next);}
+ else {content.append(el('div',{class:'inline-total'},'قيمة النباتات: '+formatMoney(cart.reduce((s,i)=>s+i.qty*i.price,0))),el('p',{class:'hint'},'الشحن يُحدد عند مراجعة طلبك. لا تدفع الآن؛ إرسال الطلب لا يحجز الكمية حتى يؤكده المتجر. يلزم تسجيل الدخول وتأكيد البريد لإرسال الطلب ومتابعته.'));const next=btn('متابعة الطلب',()=>checkout(),'button primary');next.disabled=stale;content.append(next);}
  dialog('سلة الطلب',content);}
 async function checkout(){
  if(!store.demo&&!await requireCustomer(checkout))return;

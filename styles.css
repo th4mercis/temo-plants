@@ -31,6 +31,13 @@
 @media(max-width:640px){.order-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.order-stat{padding:10px;min-height:86px;font-size:14px;gap:2px 8px}.order-stat strong{font-size:23px}.order-stat-label{font-size:13px}.order-filters>input{flex-basis:100%}.order-all-filter{width:100%}}
 
 /* Admin-only clarity: keep the customer storefront unchanged. */
+/* Grid children must be allowed to shrink before their tables can scroll. */
+.admin-main :is(.stack,.two-col,.panel,.table-wrap){min-inline-size:0;max-inline-size:100%}
+.admin-main .stack{grid-template-columns:minmax(0,1fr)}
+.admin-main .table-wrap{overscroll-behavior-inline:contain}
+.admin-main .purchases-body table{min-inline-size:640px}
+.admin-main .purchases-body .table-wrap:focus-visible{outline:3px solid var(--green);outline-offset:3px}
+@media(min-width:761px){.sidebar{overflow-y:auto;overscroll-behavior-block:contain}}
 .admin-main .admin-tasks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .admin-main .admin-task{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .admin-main .admin-task p{margin-block:4px 0}

@@ -101,6 +101,13 @@ try{
   assert.equal(await page.locator('.collection-card').count(),7);
   await page.getByRole('combobox',{name:'تصفية حسب النوع'}).selectOption('');
   assert.equal(await page.locator('.collection-shelf').count(),4);
+  await page.getByRole('button',{name:'المشتريات والحركات',exact:true}).click();
+  await page.getByRole('heading',{name:'المشتريات وتكاليف النباتات',exact:true}).waitFor();
+  const purchasesLayout=await page.evaluate(()=>({viewport:innerWidth,width:document.documentElement.scrollWidth,tables:[...document.querySelectorAll('.table-wrap')].map(e=>({width:e.clientWidth,scroll:e.scrollWidth}))}));
+  assert.equal(purchasesLayout.viewport,viewport.width,'purchases must not expand the viewport');
+  assert.ok(purchasesLayout.width<=viewport.width,'purchases must not overflow the document');
+  if(viewport.width===375)assert.ok(purchasesLayout.tables.some(t=>t.scroll>t.width),'wide tables scroll inside their containers');
+  await page.screenshot({path:path.join(out,'admin-purchases-'+viewport.width+'.png'),fullPage:true});
   assert.deepEqual(errors,[]);assert.deepEqual(blocked,[]);
   console.log('PASS admin workflow '+viewport.width);
   await context.close();

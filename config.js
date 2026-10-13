@@ -8,7 +8,7 @@ export const firebaseConfig = {
 export const LIVE_ENABLED = true;
 export const shopSettings = {
   instagram: 'Temo_plants', timezone: 'Asia/Riyadh',
-  shipping: 'أدخل مدينتك عند الطلب. نؤكد إمكانية الشحن وتكلفته وموعد الإرسال قبل الدفع.',
+  shipping: 'الشحن عبر رد بوكس. أدخل مدينتك عند الطلب؛ نؤكد إمكانية الشحن وتكلفته وموعد الإرسال قبل الدفع.',
   returns: 'اطلب تفاصيل سياسة الحجز والدفع والتعامل مع تلف الشحن قبل تأكيد الطلب.',
   canonicalBase: 'https://temoplants.com' // The final HTTPS hosting URL, without a trailing slash.
 };

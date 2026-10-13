@@ -17,6 +17,17 @@
 .shop-page #search{min-inline-size:0;inline-size:100%;min-block-size:46px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .shop-page #catalog-start{scroll-margin-block-start:calc(var(--header) + 8px)}
 .shop-page .genus-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;min-inline-size:0;padding-block:4px;overscroll-behavior-x:contain}
+.shop-page .genus-chips{min-block-size:52px}
+.shop-page #count{display:inline-block;min-block-size:24px}
+.shop-page .skeleton-block,.shop-page .skeleton-line,.shop-page .skeleton-button{background:var(--line);border-radius:8px}
+.shop-page .chip-placeholder{flex:0 0 132px;block-size:44px;border-radius:99px}
+.shop-page .catalog-skeleton .shelf-track{overflow:hidden}
+.shop-page .catalog-skeleton .product-visual{border-radius:0}
+.shop-page .skeleton-line{block-size:24px;inline-size:90%}
+.shop-page .skeleton-line:first-child{block-size:49px}
+.shop-page .skeleton-line.short{inline-size:55%}
+.shop-page .skeleton-button{block-size:44px;margin-block-start:auto}
+.shop-page.catalog-loading #catalog{min-block-size:65vh}
 .shop-page .genus-chips::-webkit-scrollbar,.shop-page .shelf-track::-webkit-scrollbar{display:none}
 .shop-page .genus-chip{flex:none;min-block-size:44px;padding:8px 16px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:inherit;font:inherit;font-size:14px;cursor:pointer}
 .shop-page .genus-chip[aria-pressed=true]{background:var(--green);border-color:var(--green);color:white}
@@ -87,6 +98,7 @@
  .shop-page .shelf-track{margin-inline:-16px;padding-inline:16px;scroll-padding-inline:16px}.shop-page .shelf-item{flex-basis:44%}
  .shop-page .shelf-head{margin-block:6px}.shop-page .shelf-head h3{font-size:16px}.shop-page .shelf-all{font-size:12px;padding-inline:0}
  .shop-page .shelf{margin-block-end:16px}.shop-page .product-content{padding:12px;gap:6px}.shop-page .product-content h3{font-size:15px;min-block-size:0}.shop-page .product-price{font-size:16px}.shop-page .product-content .button{min-block-size:40px;font-size:12px}
+ .shop-page .skeleton-line:first-child{block-size:44px}.shop-page .skeleton-button{block-size:40px}
  .shop-page .product-detail{grid-template-columns:minmax(0,1fr);gap:16px}.shop-page .detail-name{font-size:25px}.shop-page .detail-image{max-block-size:none}
  .shop-page .detail-buybar{position:fixed;inset-inline:0;inset-block-end:0;z-index:20;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-block-start:1px solid var(--line);flex-wrap:nowrap;gap:10px}.shop-page .detail-buybar .product-price{max-inline-size:40%;font-size:15px}.shop-page .detail-buybar .button{font-size:14px}
  .shop-page.has-product .shop-main{padding-block-end:calc(100px + env(safe-area-inset-bottom))}.shop-page.has-product .footer{padding-block-end:calc(110px + env(safe-area-inset-bottom))}
