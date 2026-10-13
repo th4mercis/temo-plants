@@ -15,7 +15,7 @@ export function setupAdminAuth({store,start}){
     passwordForm.after(challenge);code.querySelector('input').focus();
     challenge.addEventListener('submit',async event=>{
       event.preventDefault();if(submit.disabled)return;submit.disabled=back.disabled=true;error.textContent='';submit.textContent='جارٍ التحقق…';
-      try{await store.adminMfa.resolve(code.querySelector('input').value,factor.querySelector('select').value);code.querySelector('input').value='';await start();challenge?.remove();challenge=null;passwordForm.hidden=false;}
+      try{await store.adminMfa.resolve(code.querySelector('input').value,factor.querySelector('select').value);code.querySelector('input').value='';submit.textContent='تم التحقق، جارٍ فتح الإدارة…';await start();challenge?.remove();challenge=null;passwordForm.hidden=false;}
       catch(e){error.textContent=mfaError(e);code.querySelector('input').value='';code.querySelector('input').focus();}
       finally{submit.disabled=back.disabled=false;submit.textContent='تحقق ودخول';}
     });
