@@ -7,12 +7,16 @@ const prefix='tp2_',demoKey='temo-v2-demo-only';
 let sdk,db,auth,storage,listeners=[],user=null;
 function readDemo(){try{return JSON.parse(localStorage.getItem(demoKey))||{};}catch{return {};}}
 function demoSeed(){if(localStorage.getItem(demoKey))return;const d={};const names=[['Alocasia Frydek Variegata','Alocasia',29500],['Anthurium crystallinum','Anthurium',24000],['Monstera Thai Constellation','Monstera',38000]];names.forEach(([name,genus,price],i)=>{const p={id:'demo-'+i,code:'TP-00'+(i+1),name,genus,publicDescription:'بيانات تجريبية لاستعراض تجربة المتجر. استفسر عن صور القطعة وحالة الجذور قبل الطلب.',internalNotes:'مثال داخلي لا يظهر في المتجر',care:'إضاءة ساطعة غير مباشرة، وري حسب جفاف الوسط.',size:'شتلة متأقلمة',image:'',photoDate:'',actualPhoto:false,published:true,archived:false,revision:1,updatedAt:new Date().toISOString(),variants:[{id:'v1',type:'شتلة',qty:3+i,reserved:0,cost:Math.round(price*.45),price,sell:true}]};d['products/'+p.id]=p;d['publicProducts/'+p.id]={id:p.id,code:p.code,name,genus,description:p.publicDescription,care:p.care,size:p.size,image:'',photoDate:'',actualPhoto:false,published:true,variants:[{id:'v1',type:'شتلة',price,available:3+i}],updatedAt:p.updatedAt};});localStorage.setItem(demoKey,JSON.stringify(d));}
-export async function connect(){
+export async function connect({publicOnly=false}={}){
   if(demo){demoSeed();user={uid:'demo-owner',email:'demo@example.test'};return;}
   if(!LIVE_ENABLED)throw new Error('النسخة الحية لم تُفعّل بعد. استخدم المعاينة التجريبية أو اتبع دليل تفعيل Firebase.');
   const base='https://www.gstatic.com/firebasejs/12.19.0/';
-  const [app,f,a,s]=await Promise.all(['firebase-app.js','firebase-firestore.js','firebase-auth.js','firebase-storage.js'].map(x=>import(base+x)));
-  sdk={...f,...a,...s};const instance=app.getApps().find(a=>a.name==='backup-only')||app.initializeApp(firebaseConfig,'backup-only');db=f.getFirestore(instance);auth=a.getAuth(instance);storage=s.getStorage(instance);storage.maxUploadRetryTime=80000;storage.maxOperationRetryTime=80000;await a.setPersistence(auth,a.browserSessionPersistence);
+  const modules=publicOnly?['firebase-app.js','firebase-firestore.js']:['firebase-app.js','firebase-firestore.js','firebase-auth.js','firebase-storage.js'];
+  const [app,f,a,s]=await Promise.all(modules.map(x=>import(base+x)));
+  sdk={...f,...a,...s};const instance=app.getApps().find(a=>a.name==='backup-only')||app.initializeApp(firebaseConfig,'backup-only');db=f.getFirestore(instance);
+  // The public catalogue does not need an admin session or upload dependencies.
+  if(publicOnly)return;
+  auth=a.initializeAuth(instance,{persistence:a.browserSessionPersistence});storage=s.getStorage(instance);storage.maxUploadRetryTime=80000;storage.maxOperationRetryTime=80000;
 }
 export async function login(email,password){if(demo)return user;const r=await sdk.signInWithEmailAndPassword(auth,email,password);user=r.user;await checkAdmin();return user;}
 export async function checkAdmin(){if(demo)return true;const s=await sdk.getDoc(sdk.doc(db,'admins',auth.currentUser.uid));if(!s.exists()||s.data().active!==true){await sdk.signOut(auth);throw new Error('هذا الحساب غير مخوّل للإدارة. راجع خطوة إضافة UID في الدليل.');}user=auth.currentUser;return true;}
