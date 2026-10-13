@@ -1,0 +1,17 @@
+Temo Plants — staged TOTP rollout
+
+STATUS: Prepared, not enforced. Cloud upgrade, TOTP enablement, enrollment, rule deployment and recovery verification are separate steps. Do not mark MFA complete merely because the UI is deployed.
+
+1. Owner approves Identity Platform upgrade (irreversible; usage-based charges above free tier). Complete in Firebase Console. Keep password sign-in enabled. Do not enable SMS.
+2. Authorized operator uses tools/admin-mfa-ops.mjs enable-totp --confirm with Application Default Credentials. No service account download is required. The command preserves existing factor configurations.
+3. Deploy/test client challenge and enrollment UI. In administration choose Account Security. Owner enters password and setup key privately; never inspect, screenshot, record or transmit the actual key or OTP. No external QR service. The key is displayed for manual entry in Google/Microsoft Authenticator.
+4. Owner completes enrollment and signs in again with TOTP. Save the setup key in a private password manager/offline secure location first. Confirm that the saved configuration can restore the app. Firebase does not provide backup codes in this implementation.
+5. Review and deploy firestore.rules and the matching Storage admin() predicate against CURRENT live rules, preserving all other protections. Require request.auth.token.get('admin_mfa_required', false) != true OR request.auth.token.firebase.get('sign_in_second_factor', '') == 'totp' wherever admin access is granted. Never replace live Storage rules from an unverified historical copy.
+6. Only after rule deployment and confirmed fresh TOTP login/recovery, use tools/admin-mfa-ops.mjs require <UID> --confirmed-login-and-recovery. Backend and client honor the signed custom claim. The global REQUIRE_ADMIN_MFA switch is not needed and remains unchanged. Ordinary customer accounts are unaffected. Auth SDK automatically challenges this enrolled account on any login surface, including the customer page; the customer page currently does not implement a TOTP challenge, so use a separate ordinary customer account for purchases.
+7. Verify password-only admin token denied by backend and rules, valid TOTP admin allowed, ordinary customers/public catalogue unaffected. Backend checks revocation. Existing tokens without the new claim may keep Rules access until expiry (up to one hour); do not claim immediate revocation of all data access.
+
+Recovery
+Preferred: restore Authenticator from the privately saved setup key, then sign in normally.
+If no key/device remains: verified project owner uses a secured Google Cloud/Firebase operator account to reset the lost enrolled factor through Admin SDK and revoke refresh tokens, temporarily clears admin_mfa_required while preserving unrelated claims, supervises re-enrollment, and restores enforcement after fresh TOTP login. This temporarily lowers account protection and requires explicit owner approval at action time. Never implement a public email-only bypass or an unauthenticated reset endpoint. No recovery action is automatic or bundled into this tool.
+
+Tests: mocked SDK unit tests + isolated browser flow; these do not prove live Firebase enrollment or recovery. Live verification remains required.
