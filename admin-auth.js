@@ -30,7 +30,7 @@ export function setupAdminAuth({store,start}){
     try{
       const status=await store.adminMfa.status();
       if(status.enrolled){dialog('أمان الحساب',el('div',{class:'stack'},el('p',{},'تطبيق التحقق مرتبط بحسابك.'),el('p',{},status.secondFactor?'تم التحقق بالتطبيق في جلسة الدخول الحالية.':'سجّل الخروج ثم ادخل برمز التطبيق لاختبار الربط.'),el('p',{class:'hint'},status.required?'التحقق بالتطبيق مطلوب للوصول إلى الإدارة.':'يلزم إكمال اختبار الدخول وتفعيل سياسة الحماية على الخادم قبل إعلان اكتمال الإعداد.'),el('p',{},'احتفظ بنسخة آمنة من إعداد التطبيق. عند فقدان الوصول، تكون الاستعادة من خلال مالك مشروع Firebase بعد التحقق من هويتك.')));return;}
-      if(!status.verified){dialog('تأكيد بريد الإدارة',el('div',{class:'stack'},el('p',{},'يجب توثيق بريد الحساب قبل ربط تطبيق التحقق.'),btn('إرسال رسالة توثيق البريد',async e=>{e.currentTarget.disabled=true;try{await store.adminMfa.verifyEmail();e.currentTarget.textContent='أُرسلت الرسالة — أكّد البريد ثم سجّل الدخول مجدداً';}catch(error){e.currentTarget.disabled=false;throw error;}})));return;}
+      if(!status.verified){dialog('تأكيد بريد الإدارة',el('div',{class:'stack'},el('p',{},'يجب توثيق بريد الحساب قبل ربط تطبيق التحقق.'),btn('إرسال رسالة توثيق البريد',async e=>{const button=e.currentTarget;button.disabled=true;try{await store.adminMfa.verifyEmail();button.textContent='أُرسلت الرسالة — أكّد البريد ثم سجّل الدخول مجدداً';}catch(error){button.disabled=false;throw error;}})));return;}
       const password=field('كلمة المرور الحالية','mfa-password','password','',{required:'',autocomplete:'current-password'}),error=el('p',{class:'form-error',role:'alert'}),body=el('div',{class:'stack'},el('p',{},'سنربط تطبيق التحقق بحساب الإدارة. أدخل كلمة المرور لتأكيد هويتك.'),password,error);
       let closed=false;
       const begin=btn('بدء ربط التطبيق',async()=>{
@@ -51,4 +51,5 @@ export function setupAdminAuth({store,start}){
     }catch(e){$('login-error').textContent=mfaError(e);dialog('أمان الحساب',el('p',{role:'alert'},mfaError(e)));}
   });
 }
+
 
