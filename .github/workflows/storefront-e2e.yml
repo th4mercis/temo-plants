@@ -31,8 +31,13 @@ jobs:
       - name: Test delayed catalogue loading and recovery
         run: |
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/storefront-tests/node_modules/playwright/index.mjs" node tools/loading-e2e.mjs dist
+      - name: Test admin authenticator flow
+        run: |
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/storefront-tests/node_modules/playwright/index.mjs" node tools/mfa-e2e.mjs dist
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: storefront-results
-          path: e2e-results/
+          path: |
+            e2e-results/
+            mfa-results/
