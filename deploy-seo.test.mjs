@@ -25,8 +25,8 @@ test('CDN cache is bounded and separates product and demo; failures stay uncache
  const missing=await createPageHandler('template',async()=>undefined)(e);assert.equal(missing.statusCode,404);assert.ok(!missing.headers['Netlify-CDN-Cache-Control']);assert.match(missing.body,/العودة للمتجر/);
 });
 test('sitemap uses canonical product links, escapes IDs and fails closed',async()=>{
- const e={httpMethod:'GET'};const r=await createSitemapHandler(async()=>['a','b&c'])(e);
- assert.equal(r.statusCode,200);assert.match(r.body,/shop.html\?product=a/);assert.match(r.body,/product=b%26c/);assert.ok(!r.body.includes('share.html'));assert.match(r.headers['Netlify-CDN-Cache-Control'],/3600$/);
+ const e={httpMethod:'GET'};const r=await createSitemapHandler(async()=>[{id:'a',name:'Plant A'},{id:'b',name:'Plant B'}])(e);
+ assert.equal(r.statusCode,200);assert.match(r.body,/plants\/plant-a/);assert.match(r.body,/plants\/plant-b/);assert.ok(!r.body.includes('share.html'));assert.match(r.headers['Netlify-CDN-Cache-Control'],/3600$/);
  assert.equal((await createSitemapHandler(()=>{throw Error('secret');})(e)).statusCode,503);
  assert.equal((await createSitemapHandler(()=>{throw Error('should not run');})({httpMethod:'POST'})).statusCode,405);
 });

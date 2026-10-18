@@ -12,7 +12,7 @@ export function createHandler(load=loadProduct){return async event=>{
  const id=event.queryStringParameters?.product;if(!/^[a-zA-Z0-9_-]{1,100}$/.test(id||''))return response(404,errorPage());
  let p;try{p=await load(id);}catch{return response(503,errorPage(503));}
  if(!p?.published)return response(404,errorPage());
- const en=event.queryStringParameters?.lang==='en',m=productMeta(p,id,en?'en':'ar'),target=m.url+(en?'&lang=en':'');
+ const en=event.queryStringParameters?.lang==='en',m=productMeta(p,id,en?'en':'ar'),target=m.url+(en?'?lang=en':'');
  return response(200,'<!doctype html><html lang="'+(en?'en':'ar')+'" dir="'+(en?'ltr':'rtl')+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+m.head+'</head><body><h1>'+escape(p.name)+'</h1><p>'+escape(m.description)+'</p><a href="'+escape(target)+'">'+(en?'View plant in the shop':'عرض النبتة في المتجر')+'</a><script>location.replace('+JSON.stringify(target)+');</script></body></html>');
 };}
 export const handler=createHandler();

@@ -1,4 +1,5 @@
 import {t,language,initLanguage} from './shop-i18n.js';
+import {productPath,idForSlug,slugFromPath,setProductRoutes} from './plant-routes.js';
 import {productMeta} from './seo-client.js';
 import {initCheckout,addToCart,openCart,formatShopMoney} from './shop-checkout.js';
 import * as store from './store.js';
@@ -9,10 +10,10 @@ import {genusDetails,variantLabel,availableVariants as variants} from './storefr
 import {$,el,btn,notice,errorText,setupDialog} from './ui.js';
 let products=[],activeId=null,activeGenus='',forceGrid=false,selectedVariant='',selectedQty=1,ready=false,observers=[],shareCleanup=()=>{};
 const visible=()=>products.filter(p=>p.published&&(p.variants||[]).length);
-const home='shop.html'+(store.demo?'?demo=1':'');
-function urlFor(id=activeId,g=activeGenus){const u=new URL(location.href);u.searchParams.delete('product');u.searchParams.delete('genus');u.searchParams.delete('view');if(id)u.searchParams.set('product',id);if(g)u.searchParams.set('genus',g);if(forceGrid&&!id)u.searchParams.set('view','all');return u.pathname+u.search+u.hash;}
+const home='/shop.html'+(store.demo?'?demo=1':'');
+function urlFor(id=activeId,g=activeGenus){const u=new URL(location.href);u.searchParams.delete('product');u.searchParams.delete('genus');u.searchParams.delete('view');u.pathname='/shop.html';if(id){const p=products.find(p=>p.id===id);if(p&&!store.demo)u.pathname=productPath(p,id);else u.searchParams.set('product',id);}if(g)u.searchParams.set('genus',g);if(forceGrid&&!id)u.searchParams.set('view','all');return u.pathname+u.search+u.hash;}
 const href=id=>urlFor(id);
-function readURL(){const u=new URLSearchParams(location.search);activeId=u.get('product');activeGenus=genusKey(u.get('genus')||'');forceGrid=u.get('view')==='all';}
+function readURL(){const u=new URLSearchParams(location.search);activeId=idForSlug(slugFromPath(location.pathname))||u.get('product')||document.querySelector('[data-server-product]')?.dataset.serverProduct||null;activeGenus=genusKey(u.get('genus')||'');forceGrid=u.get('view')==='all';}
 const motion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth';
 function remember(){history.replaceState({...history.state,shopView:{y:scrollY,q:$('search').value,sort:$('sort').value,tracks:Object.fromEntries([...document.querySelectorAll('.shelf-track')].map(t=>[t.id,t.scrollLeft]))}},'',location.href);}
 function restore(view){if(!view)return;requestAnimationFrame(()=>{for(const [id,x]of Object.entries(view.tracks||{})){const t=$(id);if(t)t.scrollLeft=x;}scrollTo({top:view.y||0,behavior:'instant'});});}
@@ -27,7 +28,7 @@ function updateMeta(p){
  let structured=document.getElementById('product-structured-data');if(p&&!store.demo){if(!structured){structured=el('script',{id:'product-structured-data',type:'application/ld+json'});document.head.append(structured);}structured.textContent=JSON.stringify(meta.data);}else structured?.remove();
 }
 
-function placeholder(){return el('span',{class:'plant-placeholder'},el('img',{src:'brand-logo-d9723ed1a9.webp',alt:'',width:'100',height:'100'}),el('small',{},t('صورة النبات قريباً')));}
+function placeholder(){return el('span',{class:'plant-placeholder'},el('img',{src:'/brand-logo-d9723ed1a9.webp',alt:'',width:'100',height:'100'}),el('small',{},t('صورة النبات قريباً')));}
 function image(p,priority=false){const src=D.safeImage(p.image);if(!src)return placeholder();const n=el('img',{src,alt:p.name,loading:priority?'eager':'lazy',fetchpriority:priority?'high':'auto',decoding:'async',width:'800',height:'1000'});n.addEventListener('error',()=>n.replaceWith(placeholder()),{once:true});return n;}
 function genusInfo(g){const info=genusDetails[genusKey(g)];return info?el('section',{class:'panel genus-info'},el('h2',{},info.title),el('p',{},info.text)):null;}
 function groups(list){const map=new Map();for(const p of list){const key=genusKey(p.genus);if(!map.has(key))map.set(key,[]);map.get(key).push(p);}const order=genera.map(([g])=>genusKey(g));return [...map].sort(([a],[b])=>{const ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib)||a.localeCompare(b);});}
@@ -36,7 +37,7 @@ const byName=(a,b)=>stockOrder(a,b)||Number(!!D.safeImage(b.image))-Number(!!D.s
 const minPrice=p=>{const prices=variants(p).filter(v=>v.price>0).map(v=>v.price);return prices.length?Math.min(...prices):Infinity;};
 function priceLabel(p){const prices=[...new Set(variants(p).map(v=>v.price))],minimum=minPrice(p);return !variants(p).length?t('غير متوفر حالياً'):minimum===Infinity?t('السعر قيد التحديث'):(prices.length>1?t('من '):'')+formatShopMoney(minimum);}
 function shareProduct(p){
- const u=new URL(store.demo?'shop.html':'share.html',shopSettings.canonicalBase?shopSettings.canonicalBase+'/':location.href);u.searchParams.set('product',p.id);if(language()==='en')u.searchParams.set('lang','en');if(store.demo)u.searchParams.set('demo','1');
+ const u=new URL(store.demo?'/shop.html':productPath(p,p.id),shopSettings.canonicalBase?shopSettings.canonicalBase+'/':location.href);if(store.demo)u.searchParams.set('product',p.id);if(language()==='en')u.searchParams.set('lang','en');if(store.demo)u.searchParams.set('demo','1');
  const url=u.href,enc=encodeURIComponent,paths={share:'M18 8a3 3 0 1 0-3-3 3 3 0 0 0 3 3ZM6 15a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm12 7a3 3 0 1 0-3-3 3 3 0 0 0 3 3ZM8.6 10.5l6.8-4M8.6 13.5l6.8 4',close:'m6 6 12 12M6 18 18 6',copy:'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',check:'m5 12 4 4L19 6',mail:'M3 5h18v14H3ZM3 6l9 7 9-7',x:'M4 3h4l12 18h-4ZM20 3 4 21',facebook:'M14 22V12h4l1-4h-5V6c0-2 1-3 4-2V1h-3c-4 0-6 2-6 6v1H6v4h3v10',whatsapp:'M20 12a8 8 0 0 1-12 7l-5 2 1-5a8 8 0 1 1 16-4ZM8 8c0 4 3 7 7 7l1-2-3-1-1 1-2-2 1-1-1-3Z'};
  const icon=key=>{const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',paths[key]);svg.append(path);return svg;};
  const status=el('span',{class:'share-status',role:'status'}),menu=el('div',{id:'product-share-options',class:'share-options',hidden:'','aria-label':t('خيارات المشاركة')});
@@ -78,4 +79,4 @@ $('demo-banner').hidden=!store.demo;$('home-link').href=home;$('shipping-policy'
 $('search').addEventListener('input',()=>{activeGenus='';forceGrid=false;history.replaceState({},'',urlFor(null,''));render();});$('sort').addEventListener('change',render);
 addEventListener('popstate',e=>{readURL();selectedVariant='';selectedQty=1;$('search').value=e.state?.shopView?.q||'';$('sort').value=e.state?.shopView?.sort||'name';render();restore(e.state?.shopView);});
 function loadError(){document.body.classList.remove('catalog-loading');$('catalog').setAttribute('aria-busy','false');if(!products.length){$('genus-chips').replaceChildren();$(activeId?'product-view':'catalog').replaceChildren(el('div',{class:'empty',role:'alert'},t('تعذر تحميل النباتات. تحقق من الاتصال ثم حاول مجدداً.'),btn(t('إعادة المحاولة'),()=>location.reload())));}else render();}
-try{await store.connect({publicOnly:true});store.subscribe('publicProducts',rows=>{const view={y:scrollY,tracks:Object.fromEntries([...document.querySelectorAll('.shelf-track')].map(t=>[t.id,t.scrollLeft]))};products=rows;ready=true;render();restore(view);},e=>{ready=false;loadError();notice(t('تعذر تحديث التوفر. أعد المحاولة قبل الطلب.'),true);});}catch(e){ready=false;loadError();notice(errorText(e),true);}
+try{await store.connect({publicOnly:true});store.subscribe('publicProducts',rows=>{const view={y:scrollY,tracks:Object.fromEntries([...document.querySelectorAll('.shelf-track')].map(t=>[t.id,t.scrollLeft]))};products=rows;setProductRoutes(rows);ready=true;render();restore(view);},e=>{ready=false;loadError();notice(t('تعذر تحديث التوفر. أعد المحاولة قبل الطلب.'),true);});}catch(e){ready=false;loadError();notice(errorText(e),true);}

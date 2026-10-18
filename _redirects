@@ -1,4 +1,5 @@
 /sitemap.xml /.netlify/functions/sitemap 200
+/plants/* /.netlify/functions/product-page 200!
 /shop.html /.netlify/functions/product-page 200!
 /shop /.netlify/functions/product-page 200!
 /share.html /.netlify/functions/product-share 200
