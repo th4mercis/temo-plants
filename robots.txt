@@ -1,4 +1,5 @@
 User-agent: *
-Disallow: /temo-plants.html
 Disallow: /*demo=1
 Allow: /shop.html
+
+Sitemap: https://temoplants.com/sitemap.xml

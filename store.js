@@ -1,5 +1,3 @@
-import {createAdminMfa} from './admin-mfa.js';
-import {prepareImage} from './image-upload.js';
 import {firebaseConfig,LIVE_ENABLED} from './config.js';
 import {id} from './domain.js';
 export const demo=new URLSearchParams(location.search).get('demo')==='1';
@@ -18,6 +16,7 @@ export async function connect({publicOnly=false}={}){
   sdk={...f,...a,...s};const instance=app.getApps().find(a=>a.name==='backup-only')||app.initializeApp(firebaseConfig,'backup-only');db=f.getFirestore(instance);
   // The public catalogue does not need an admin session or upload dependencies.
   if(publicOnly)return;
+  const {createAdminMfa}=await import('./admin-mfa.js');
   auth=a.initializeAuth(instance,{persistence:a.browserSessionPersistence});storage=s.getStorage(instance);adminMfa=createAdminMfa(sdk,auth);storage.maxUploadRetryTime=80000;storage.maxOperationRetryTime=80000;
 }
 export async function login(email,password){if(demo)return user;adminMfa.cancel();try{const r=await sdk.signInWithEmailAndPassword(auth,email,password);user=r.user;await checkAdmin();return user;}catch(error){if(adminMfa.capture(error))return null;throw error;}}
@@ -40,6 +39,7 @@ export async function atomic(paths,build){
 }
 export async function uploadImage(file){
   if(!file)return '';if(demo)throw new Error('رفع الصور متاح في النسخة الحية فقط.');
+  const {prepareImage}=await import('./image-upload.js');
   const {blob,extension}=await prepareImage(file);
   const r=sdk.ref(storage,'catalog/'+id()+'.'+extension);const task=sdk.uploadBytesResumable(r,blob,{contentType:blob.type,cacheControl:'public,max-age=31536000,immutable'});let timer;try{await Promise.race([task,new Promise((_,reject)=>{timer=setTimeout(()=>{task.cancel();reject(new Error('انتهت مهلة رفع الصورة. تحقق من تفعيل Firebase Storage والفوترة وقواعد الصور، ثم أعد المحاولة. بيانات النموذج محفوظة في الشاشة.'));},90000);})]);return await sdk.getDownloadURL(r);}catch(e){if(e.code?.startsWith('storage/'))throw new Error('تعذر رفع الصورة. تحقق من تفعيل Storage وقواعده والاتصال. لم تُحفظ تعديلات النبتة؛ يمكنك إعادة المحاولة.');throw e;}finally{clearTimeout(timer);}
 }
