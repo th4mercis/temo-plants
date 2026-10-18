@@ -121,3 +121,7 @@
 .shop-page .share-status{font-size:13px;color:var(--green)}
 .shop-page .share-status:empty{display:none}
 .shop-page .share-fallback{max-inline-size:100%;inline-size:320px}
+
+.shop-page .shop-error{max-inline-size:38rem;margin:10vh auto;padding:24px;text-align:center;line-height:1.8}.shop-page .shop-error .button{min-block-size:44px;display:inline-flex;align-items:center}.shop-page .shop-error a:focus-visible{outline:3px solid var(--green);outline-offset:4px}
+
+.shop-page .shop-language{flex-shrink:0;min-block-size:44px;padding-inline:8px;font-size:13px}html[dir="ltr"] .shop-page .shelf-nav{transform:rotate(180deg)}@media(max-width:540px){.shop-page .topbar{gap:5px}.shop-page .topbar .brand{min-inline-size:0;gap:4px}.shop-page .topbar .brand span{font-size:12px}.shop-page .topbar .brand-mark{inline-size:30px;block-size:30px}.shop-page .shop-language{font-size:12px;padding-inline:5px}}

@@ -1,20 +1,18 @@
-const base='https://temoplants.com';
-const escape=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function loadProduct(id){
+import {productMeta,headers,errorPage,escape} from './seo.mjs';
+export async function loadProduct(id){
  // Read only the same published projection available to storefront visitors.
  const r=await fetch('https://firestore.googleapis.com/v1/projects/temo-plants/databases/(default)/documents/tp2_publicProducts/'+encodeURIComponent(id),{signal:AbortSignal.timeout(8000)});
  if(r.status===404||r.status===403)return undefined;if(!r.ok)throw Error('unavailable');
- const {fields:f}=await r.json();return {published:f?.published?.booleanValue===true,name:f?.name?.stringValue||'',description:f?.description?.stringValue||'',actualPhoto:f?.actualPhoto?.booleanValue===true,image:f?.image?.stringValue||''};
+ const {fields:f}=await r.json();return {published:f?.published?.booleanValue===true,name:f?.name?.stringValue||'',description:f?.description?.stringValue||'',actualPhoto:f?.actualPhoto?.booleanValue===true,image:f?.image?.stringValue||'',variants:(f?.variants?.arrayValue?.values||[]).map(v=>({price:Number(v.mapValue?.fields?.price?.integerValue??v.mapValue?.fields?.price?.doubleValue),available:Number(v.mapValue?.fields?.available?.integerValue??v.mapValue?.fields?.available?.doubleValue??0)}))};
 }
+
 export function createHandler(load=loadProduct){return async event=>{
- const headers={'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
- if(!['GET','HEAD'].includes(event.httpMethod))return {statusCode:405,headers,body:''};
- const id=event.queryStringParameters?.product;if(!/^[a-zA-Z0-9_-]{1,100}$/.test(id||''))return {statusCode:404,headers,body:'Not found'};
- let p;try{p=await load(id);}catch{return {statusCode:503,headers,body:'Temporarily unavailable'};}
- if(!p?.published)return {statusCode:404,headers,body:'Not found'};
- let image=base+'/brand-logo-d9723ed1a9.webp';try{const u=new URL(p.image);if(u.protocol==='https:')image=u.href;}catch{}
- const title=p.name+' | Temo Plants',description=(p.actualPhoto?'الصورة للقطعة الفعلية. ':'صورة مرجعية؛ راجع صورة القطعة قبل الشراء. ')+String(p.description||'').slice(0,220),url=base+'/share.html?product='+encodeURIComponent(id),target=base+'/shop.html?product='+encodeURIComponent(id);
- const body=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title><meta name="description" content="${escape(description)}"><meta property="og:type" content="product"><meta property="og:site_name" content="Temo Plants"><meta property="og:title" content="${escape(title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:image" content="${escape(image)}"><meta property="og:image:alt" content="${escape(p.name)}"><meta property="og:url" content="${escape(url)}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(title)}"><meta name="twitter:description" content="${escape(description)}"><meta name="twitter:image" content="${escape(image)}"><link rel="canonical" href="${escape(target)}"></head><body><h1>${escape(p.name)}</h1><p>${escape(description)}</p><a href="${escape(target)}">عرض النبتة في المتجر</a><script>location.replace(${JSON.stringify(target)});</script></body></html>`;
- return {statusCode:200,headers,body:event.httpMethod==='HEAD'?'':body};
+ const response=(statusCode,body)=>({statusCode,headers:headers(statusCode===200?300:0),body:event.httpMethod==='HEAD'?'':body});
+ if(!['GET','HEAD'].includes(event.httpMethod))return response(405,'');
+ const id=event.queryStringParameters?.product;if(!/^[a-zA-Z0-9_-]{1,100}$/.test(id||''))return response(404,errorPage());
+ let p;try{p=await load(id);}catch{return response(503,errorPage(503));}
+ if(!p?.published)return response(404,errorPage());
+ const en=event.queryStringParameters?.lang==='en',m=productMeta(p,id,en?'en':'ar'),target=m.url+(en?'?lang=en':'');
+ return response(200,'<!doctype html><html lang="'+(en?'en':'ar')+'" dir="'+(en?'ltr':'rtl')+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+m.head+'</head><body><h1>'+escape(p.name)+'</h1><p>'+escape(m.description)+'</p><a href="'+escape(target)+'">'+(en?'View plant in the shop':'عرض النبتة في المتجر')+'</a><script src="/share-redirect.js" defer></script></body></html>');
 };}
 export const handler=createHandler();
