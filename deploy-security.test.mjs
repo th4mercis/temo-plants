@@ -5,6 +5,19 @@ import {parseBody,consumeLimit} from './security.mjs';
 import {normalizeReceiptImage} from './receipt-image.mjs';
 import {createHandler as shopHandler} from './netlify/functions/shop-orders.mjs';
 import {createHandler as adminHandler} from './netlify/functions/admin-commands.mjs';
+test('admin endpoint verifies revocation and rejects invalid, inactive and non-TOTP identities before commands',async()=>{
+ const old=process.env.REQUIRE_ADMIN_MFA;delete process.env.REQUIRE_ADMIN_MFA;
+ try{
+  let user={uid:'owner',admin_mfa_required:true},active=true,revoked=false,calls=[];
+  const handler=adminHandler(async()=>({auth:{verifyIdToken:async(token,checkRevoked)=>{calls.push([token,checkRevoked]);if(revoked)throw Error('revoked');return user;}},db:{doc:()=>({get:async()=>({data:()=>({active})})}),runTransaction:()=>{throw Error('business write not expected');}}}));
+  const event={httpMethod:'POST',headers:{origin:'https://temoplants.com',authorization:'Bearer test-token'},body:JSON.stringify({action:'health',args:[{}]})};
+  assert.equal((await handler(event)).statusCode,403);assert.deepEqual(calls[0],['test-token',true]);
+  user={...user,firebase:{sign_in_second_factor:'phone'}};assert.equal((await handler(event)).statusCode,403);
+  user={...user,firebase:{sign_in_second_factor:'totp'}};assert.equal((await handler(event)).statusCode,200);
+  active=false;assert.equal((await handler(event)).statusCode,403);active=true;revoked=true;assert.equal((await handler(event)).statusCode,403);
+  assert.equal((await handler({...event,headers:{origin:'https://temoplants.com'}})).statusCode,403);
+ }finally{if(old===undefined)delete process.env.REQUIRE_ADMIN_MFA;else process.env.REQUIRE_ADMIN_MFA=old;}
+});
 function fixture(){
  const data=new Map([['admins/owner',{active:true}],['tp2_products/p',{id:'p',code:'P',name:'Test',genus:'Hoya',publicDescription:'',revision:1,published:true,variants:[{id:'v',type:'كتنج',qty:2,reserved:0,cost:200,price:500,sell:true}]}]]);
  const snap=p=>({exists:data.has(p),data:()=>structuredClone(data.get(p))});

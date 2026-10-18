@@ -1,8 +1,14 @@
 import {productPath} from './plant-routes.js';
 export const base='https://temoplants.com';
+export const securityHeaders={
+ 'Referrer-Policy':'strict-origin-when-cross-origin',
+ 'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
+ 'X-Frame-Options':'DENY',
+ 'Content-Security-Policy':"default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://www.gstatic.com; frame-src https://temo-plants.firebaseapp.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+};
 export const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function headers(seconds=0,query='product|demo|lang'){
- return {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...(seconds?{'Netlify-CDN-Cache-Control':`public, durable, s-maxage=${seconds}`,'Netlify-Vary':`query=${query}`}:{})};
+ return {...securityHeaders,'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...(seconds?{'Netlify-CDN-Cache-Control':`public, durable, s-maxage=${seconds}`,'Netlify-Vary':`query=${query}`}:{})};
 }
 export function errorPage(status=404){return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${status===404?'الصفحة غير موجودة':'تعذر تحميل الصفحة'} | Temo Plants</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/shop-layout.css"><link rel="icon" href="/favicon.ico"></head><body class="shop-page"><main class="shop-error"><img src="/brand-logo-d9723ed1a9.webp" width="110" height="110" alt="Temo Plants"><p>${status}</p><h1>${status===404?'لم نجد هذه الصفحة':'تعذر تحميل الصفحة مؤقتًا'}</h1><p>${status===404?'قد تكون النبتة لم تعد منشورة، أو تغيّر الرابط. يمكنك العودة واستكشاف المجموعة.':'حاول مرة أخرى بعد قليل، أو عد إلى المتجر.'}</p><a class="button primary" href="/shop.html">العودة للمتجر</a></main><script type="module" src="/shop-language-init.js"></script></body></html>`;}
 export function productMeta(p,id,lang='ar'){
