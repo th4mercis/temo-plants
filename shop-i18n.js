@@ -36,3 +36,5 @@ Object.assign(messages,{
  'شتلة متأقلمة':'Acclimated young plant','إضاءة ساطعة غير مباشرة، وري حسب جفاف الوسط.':'Bright indirect light; water according to growing medium moisture.',
  'تحتاج قائمة المنتجات إلى JavaScript. يمكنك مراسلتنا عبر رابط Instagram أعلاه للاستفسار عن المتاح.':'The catalogue requires JavaScript. Contact us through Instagram above to ask about available plants.'
 });
+
+Object.assign(messages,{"Temo Plants — نباتات نادرة":"Temo Plants — Rare plants","كل ورقة تحكي شغف. نباتات نادرة وزراعة مائية من السعودية — Alocasia · Anthurium · Hoya.":"Rare plants and hydroponics from Saudi Arabia — Alocasia, Anthurium and Hoya."});
