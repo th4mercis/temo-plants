@@ -1,6 +1,6 @@
 const base='https://temoplants.com';
 const escape=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function loadProduct(id){
+export async function loadProduct(id){
  // Read only the same published projection available to storefront visitors.
  const r=await fetch('https://firestore.googleapis.com/v1/projects/temo-plants/databases/(default)/documents/tp2_publicProducts/'+encodeURIComponent(id),{signal:AbortSignal.timeout(8000)});
  if(r.status===404||r.status===403)return undefined;if(!r.ok)throw Error('unavailable');
