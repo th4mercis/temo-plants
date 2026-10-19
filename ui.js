@@ -1,5 +1,5 @@
 import {t,language} from './shop-i18n.js';
-import {formatMoney} from './domain.js';
+import {formatMoney} from './public-domain.js';
 export const $=id=>document.getElementById(id);
 export function el(tag,attrs={},...children){const n=document.createElement(tag);for(const [k,v]of Object.entries(attrs)){if(v===null||v===undefined)continue;if(k==='class')n.className=v;else if(k.startsWith('on'))n.addEventListener(k.slice(2).toLowerCase(),v);else if(k==='text')n.textContent=t(v);else if(k==='value')n.value=v;else if(k==='checked')n.checked=!!v;else if(k==='disabled')n.disabled=!!v;else n.setAttribute(k,['aria-label','title','placeholder','alt'].includes(k)?t(String(v)):String(v));}children.flat(Infinity).filter(x=>x!==null&&x!==undefined).forEach(c=>n.append(c instanceof Node?c:document.createTextNode(t(String(c)))));return n;}
 export function btn(text,fn,cls='button'){return el('button',{type:'button',class:cls,onClick:async event=>{try{await fn(event);}catch(e){notice(errorText(e),true);}}},text);}

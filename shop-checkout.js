@@ -1,10 +1,9 @@
 import {t,language} from './shop-i18n.js';
 import {initCustomerAccount,requireCustomer,customerToken} from './customer-account.js';
 import {el,btn,field,check,dialog,notice} from './ui.js';
-import {formatMoney as domainFormatMoney,id,assert,available,localDate,money} from './domain.js';
+import {formatMoney as domainFormatMoney,id,assert,available,localDate,money} from './public-domain.js';
 import {phoneNumber} from './customer-domain.js';
 import * as store from './store.js';
-import * as service from './service.js';
 export function formatShopMoney(halalas){return new Intl.NumberFormat('en-US',{minimumFractionDigits:halalas%100?2:0,maximumFractionDigits:2}).format(halalas/100)+t(' ر.س');}
 const formatMoney=n=>document.body.classList.contains('shop-page')?formatShopMoney(n):domainFormatMoney(n);
 function shopIcon(kind){const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');for(const [k,v]of Object.entries({viewBox:'0 0 24 24',width:'22',height:'22',fill:'none',stroke:'currentColor','stroke-width':'1.7','aria-hidden':'true',focusable:'false'}))svg.setAttribute(k,v);const paths={cart:['M3 3h2l2 13h12l2-9H6','M9 20h.01M18 20h.01'],account:['M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0','M4 21v-2a8 8 0 0 1 16 0v2'],instagram:['M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4','M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0','M17.5 6.5h.01']};for(const d of paths[kind]){const path=document.createElementNS(ns,'path');path.setAttribute('d',d);path.setAttribute('stroke-linecap','round');path.setAttribute('stroke-linejoin','round');svg.append(path);}return svg;}
@@ -17,7 +16,7 @@ export async function orderApi(data,admin=false){
   if(data.action==='list')return {requests:(await store.list('webRequests')).filter(r=>r.status==='pending')};
   if(data.action==='create'){const r={...data,number:'DEMO-'+data.id.slice(0,8),status:'pending',subtotal:data.items.reduce((s,i)=>s+i.qty*i.price,0),createdAt:new Date().toISOString()};await store.atomic(['webRequests/'+data.id],()=>({writes:{['webRequests/'+data.id]:r}}));return r;}
   const r=await store.get('webRequests/'+data.id);assert(r,t('الطلب غير موجود.'));
-  if(data.action==='approve'){await service.createOrder({customer:r.name,customerPhone:r.phone,destination:r.city,notes:r.notes,date:localDate(),expires:data.expires,paid:0,shippingCharged:data.shippingCharged,shippingCost:0,items:r.items,source:'المتجر'},'reserve',r.id);r.status='approved';r.expires=data.expires;r.total=r.subtotal+data.shippingCharged;r.shippingCharged=data.shippingCharged;}
+  if(data.action==='approve'){const service=await import('./service.js');await service.createOrder({customer:r.name,customerPhone:r.phone,destination:r.city,notes:r.notes,date:localDate(),expires:data.expires,paid:0,shippingCharged:data.shippingCharged,shippingCost:0,items:r.items,source:'المتجر'},'reserve',r.id);r.status='approved';r.expires=data.expires;r.total=r.subtotal+data.shippingCharged;r.shippingCharged=data.shippingCharged;}
   if(data.action==='reject')r.status='rejected';if(data.action!=='status')await store.atomic(['webRequests/'+r.id],()=>({writes:{['webRequests/'+r.id]:r}}));return r;
  }
  const headers={'Content-Type':'application/json'};if(admin)headers.Authorization='Bearer '+await store.marketToken();else{const token=await customerToken();if(token)headers.Authorization='Bearer '+token;}

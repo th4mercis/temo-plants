@@ -1,4 +1,4 @@
-import {quantity,assert} from './domain.js';
+import {quantity,assert} from './public-domain.js';
 export const genusDetails={
  alocasia:{title:'ألوكاسيا — Alocasia',text:'تصفح مجموعة الألوكاسيا، واختر من الكورمات والشتلات المعروضة. تفاصيل الحجم والجذور والصور الحديثة متاحة عند الاستفسار.'},
  anthurium:{title:'أنثوريوم — Anthurium',text:'اكتشف مجموعة الأنثوريوم المعروضة. استفسر عن اسم الهجين، وحجم النبتة، وصور الأوراق والجذور قبل تأكيد الطلب.'},

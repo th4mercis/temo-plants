@@ -36,10 +36,10 @@ test('cancel removes pending enrollment and errors do not expose SDK details',as
  const f=fixture();await f.controller.begin('secret');f.controller.cancel();await assert.rejects(f.controller.enroll('123456'));
  assert.ok(!mfaError({code:'auth/unexpected',message:'private debug value'}).includes('private'));
 });
-test('required administrators cannot use password-only or SMS tokens; other accounts unaffected',()=>{
+test('required administrators cannot use password-only or SMS tokens; new administrators also require TOTP',()=>{
  const old=process.env.REQUIRE_ADMIN_MFA;delete process.env.REQUIRE_ADMIN_MFA;
  try{
-  requireRecentAdmin({});
+  assert.throws(()=>requireRecentAdmin({}),e=>e.status===403);
   for(const firebase of [undefined,{}, {sign_in_second_factor:'phone'}])assert.throws(()=>requireRecentAdmin({admin_mfa_required:true,firebase}),e=>e.status===403);
   requireRecentAdmin({admin_mfa_required:true,firebase:{sign_in_second_factor:'totp'}});
   process.env.REQUIRE_ADMIN_MFA='true';assert.throws(()=>requireRecentAdmin({}));requireRecentAdmin({firebase:{sign_in_second_factor:'totp'}});

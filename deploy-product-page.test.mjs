@@ -9,7 +9,7 @@ const event={path:'/plants/hoya-princess',httpMethod:'GET',queryStringParameters
 const product={published:true,name:'Hoya <Princess>',image:'https://example.com/a.webp?a=1&b=2',description:'<script>alert(1)</script>',actualPhoto:true,cost:999,internalNotes:'PRIVATE'};
 test('initial product HTML has one canonical, public metadata and visible escaped product without JS',async()=>{
  const r=await createPageHandler(template,async()=>product)(event);
- assert.equal(r.statusCode,200);assert.equal((r.body.match(/rel="canonical"/g)||[]).length,1);
+ assert.equal(r.statusCode,200);assert.equal((r.body.match(/<h1[\s>]/g)||[]).length,1);assert.equal((r.body.match(/rel="canonical"/g)||[]).length,1);
  assert.match(r.body,/<link rel="canonical" href="https:\/\/temoplants.com\/plants\/hoya-princess">/);
  assert.match(r.body,/<h1>Hoya &lt;Princess&gt;<\/h1>/);assert.match(r.body,/data-server-product="plant-123"/);
  assert.match(r.body,/<meta property="og:title" content="Hoya &lt;Princess&gt; \| Temo Plants">/);

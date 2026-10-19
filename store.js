@@ -1,5 +1,5 @@
 import {firebaseConfig,LIVE_ENABLED} from './config.js';
-import {id} from './domain.js';
+import {id} from './public-domain.js';
 export const demo=new URLSearchParams(location.search).get('demo')==='1';
 export const collections=['customers','products','orders','purchases','expenses','cash','movements','supplies','shipments','audit','legacy'];
 const prefix='tp2_',demoKey='temo-v2-demo-only';
@@ -20,7 +20,7 @@ export async function connect({publicOnly=false}={}){
   auth=a.initializeAuth(instance,{persistence:a.browserSessionPersistence});storage=s.getStorage(instance);adminMfa=createAdminMfa(sdk,auth);storage.maxUploadRetryTime=80000;storage.maxOperationRetryTime=80000;
 }
 export async function login(email,password){if(demo)return user;adminMfa.cancel();try{const r=await sdk.signInWithEmailAndPassword(auth,email,password);user=r.user;await checkAdmin();return user;}catch(error){if(adminMfa.capture(error))return null;throw error;}}
-export async function checkAdmin(){if(demo)return true;const s=await sdk.getDoc(sdk.doc(db,'admins',auth.currentUser.uid));if(!s.exists()||s.data().active!==true){await sdk.signOut(auth);throw new Error('هذا الحساب غير مخوّل للإدارة. راجع خطوة إضافة UID في الدليل.');}const token=await auth.currentUser.getIdTokenResult();if(token.claims.admin_mfa_required===true&&token.claims.firebase?.sign_in_second_factor!=='totp')throw new Error('يلزم تسجيل الدخول بتطبيق التحقق. إذا فقدت التطبيق، استخدم إجراء الاستعادة لدى مالك المشروع.');user=auth.currentUser;return true;}
+export async function checkAdmin(){if(demo)return true;const s=await sdk.getDoc(sdk.doc(db,'admins',auth.currentUser.uid));if(!s.exists()||s.data().active!==true){await sdk.signOut(auth);throw new Error('هذا الحساب غير مخوّل للإدارة. راجع خطوة إضافة UID في الدليل.');}const token=await auth.currentUser.getIdTokenResult();if(token.claims.firebase?.sign_in_second_factor!=='totp')throw new Error('يلزم تسجيل الدخول بتطبيق التحقق. إذا فقدت التطبيق، استخدم إجراء الاستعادة لدى مالك المشروع.');user=auth.currentUser;return true;}
 export function watchAuth(fn){if(demo){fn(user);return ()=>{};}return sdk.onAuthStateChanged(auth,fn);}
 export async function logout(){adminMfa?.cancel();listeners.forEach(f=>f());listeners=[];if(!demo)await sdk.signOut(auth);user=null;}
 export const uid=()=>demo?'demo-owner':auth?.currentUser?.uid;

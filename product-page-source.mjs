@@ -4,7 +4,7 @@ import {idForSlug,slugFromPath,productPath,setProductRoutes} from './plant-route
 import {listPublished} from './public-catalog-source.mjs';
 export function renderProductPage(template,p,id,lang='ar'){
  const {image,description,head}=productMeta(p,id,lang);
- return template.replace('<html lang="ar" dir="rtl">',lang==='en'?'<html lang="en" dir="ltr">':'<html lang="ar" dir="rtl">').replace(/<title>[\s\S]*?<\/title>/i,'').replace(/<meta\b[^>]*(?:name="description"|property="og:[^"]*"|name="twitter:[^"]*")[^>]*>/gi,'').replace(/<link\b[^>]*rel="canonical"[^>]*>/gi,'')
+ return template.replace(/<h1([\s>][\s\S]*?)<\/h1>/i,'<h2$1</h2>').replace('<html lang="ar" dir="rtl">',lang==='en'?'<html lang="en" dir="ltr">':'<html lang="ar" dir="rtl">').replace(/<title>[\s\S]*?<\/title>/i,'').replace(/<meta\b[^>]*(?:name="description"|property="og:[^"]*"|name="twitter:[^"]*")[^>]*>/gi,'').replace(/<link\b[^>]*rel="canonical"[^>]*>/gi,'')
  .replace('</head>',head+'</head>').replace('class="shop-page catalog-loading"','class="shop-page has-product"')
  .replace('id="hero"','id="hero" hidden').replace('id="catalog-view"','id="catalog-view" hidden')
  .replace('<div id="product-view" hidden></div>',`<div id="product-view"><article class="product-detail" data-server-product="${escape(id)}"><div><img class="detail-image" src="${escape(image)}" alt="${escape(p.name)}" width="800" height="1000"></div><div><h1>${escape(p.name)}</h1><p>${escape(description)}</p><p role="status">جارٍ تحديث السعر والتوفر…</p><a class="button" href="/shop.html">العودة للمجموعة</a></div></article></div>`);
