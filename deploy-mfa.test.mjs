@@ -45,3 +45,5 @@ test('required administrators cannot use password-only or SMS tokens; new admini
   process.env.REQUIRE_ADMIN_MFA='true';assert.throws(()=>requireRecentAdmin({}));requireRecentAdmin({firebase:{sign_in_second_factor:'totp'}});
  }finally{if(old===undefined)delete process.env.REQUIRE_ADMIN_MFA;else process.env.REQUIRE_ADMIN_MFA=old;}
 });
+
+test('new administrator status requires MFA without a rollout claim',async()=>{const f=fixture();const status=await f.controller.status();assert.equal(status.required,true);assert.equal(status.enrolled,false);assert.equal(status.secondFactor,false);});
