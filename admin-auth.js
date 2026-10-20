@@ -26,9 +26,9 @@ export function setupAdminAuth({store,start}){
     catch(error){$('password').value='';$('login-error').textContent=mfaError(error);}
     finally{submit.disabled=false;}
   });
-  $('admin-security').addEventListener('click',async()=>{
+  async function openSecurity(){
     try{
-      const status=await store.adminMfa.status();
+      await store.checkAdminIdentity();const status=await store.adminMfa.status();
       if(status.enrolled){dialog('أمان الحساب',el('div',{class:'stack'},el('p',{},'تطبيق التحقق مرتبط بحسابك.'),el('p',{},status.secondFactor?'تم التحقق بالتطبيق في جلسة الدخول الحالية.':'سجّل الخروج ثم ادخل برمز التطبيق لاختبار الربط.'),el('p',{class:'hint'},status.required?'التحقق بالتطبيق مطلوب للوصول إلى الإدارة.':'يلزم إكمال اختبار الدخول وتفعيل سياسة الحماية على الخادم قبل إعلان اكتمال الإعداد.'),el('p',{},'احتفظ بنسخة آمنة من إعداد التطبيق. عند فقدان الوصول، تكون الاستعادة من خلال مالك مشروع Firebase بعد التحقق من هويتك.')));return;}
       if(!status.verified){dialog('تأكيد بريد الإدارة',el('div',{class:'stack'},el('p',{},'يجب توثيق بريد الحساب قبل ربط تطبيق التحقق.'),btn('إرسال رسالة توثيق البريد',async e=>{const button=e.currentTarget;button.disabled=true;try{await store.adminMfa.verifyEmail();button.textContent='أُرسلت الرسالة — أكّد البريد ثم سجّل الدخول مجدداً';}catch(error){button.disabled=false;throw error;}})));return;}
       const password=field('كلمة المرور الحالية','mfa-password','password','',{required:'',autocomplete:'current-password'}),error=el('p',{class:'form-error',role:'alert'}),body=el('div',{class:'stack'},el('p',{},'سنربط تطبيق التحقق بحساب الإدارة. أدخل كلمة المرور لتأكيد هويتك.'),password,error);
@@ -36,7 +36,7 @@ export function setupAdminAuth({store,start}){
       const begin=btn('بدء ربط التطبيق',async()=>{
         const input=password.querySelector('input');if(!input.reportValidity())return;begin.disabled=true;error.textContent='';
         try{
-          await store.checkAdmin();const setup=await store.adminMfa.begin(input.value);input.value='';if(closed){store.adminMfa.cancel();return;}
+          await store.checkAdminIdentity();const setup=await store.adminMfa.begin(input.value);input.value='';if(closed){store.adminMfa.cancel();return;}
           const key=field('مفتاح الإعداد — خاص بك','mfa-secret','text',setup.key,{readonly:'',dir:'ltr',autocomplete:'off'}),code=otpField('enroll-otp'),verifyError=el('p',{class:'form-error',role:'alert'});
           const finish=btn('تأكيد الربط وتسجيل الخروج',async()=>{
             if(!code.querySelector('input').reportValidity())return;finish.disabled=true;verifyError.textContent='';
@@ -49,7 +49,9 @@ export function setupAdminAuth({store,start}){
       body.append(begin);dialog('ربط تطبيق التحقق',body);
       $('dialog').addEventListener('close',()=>{closed=true;store.adminMfa.cancel();body.replaceChildren();},{once:true});
     }catch(e){$('login-error').textContent=mfaError(e);dialog('أمان الحساب',el('p',{role:'alert'},mfaError(e)));}
-  });
+  }
+  $('admin-security').addEventListener('click',openSecurity);
+  passwordForm.after(btn('إعداد تطبيق التحقق للمسؤول',openSecurity,'button subtle'));
 }
 
 

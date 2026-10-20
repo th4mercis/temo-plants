@@ -125,3 +125,20 @@
 .shop-page .shop-error{max-inline-size:38rem;margin:10vh auto;padding:24px;text-align:center;line-height:1.8}.shop-page .shop-error .button{min-block-size:44px;display:inline-flex;align-items:center}.shop-page .shop-error a:focus-visible{outline:3px solid var(--green);outline-offset:4px}
 
 .shop-page .shop-language{flex-shrink:0;min-block-size:44px;padding-inline:8px;font-size:13px}html[dir="ltr"] .shop-page .shelf-nav{transform:rotate(180deg)}@media(max-width:540px){.shop-page .topbar{gap:5px}.shop-page .topbar .brand{min-inline-size:0;gap:4px}.shop-page .topbar .brand span{font-size:12px}.shop-page .topbar .brand-mark{inline-size:30px;block-size:30px}.shop-page .shop-language{font-size:12px;padding-inline:5px}}
+
+/* Local-only refinement: preserve the original framed identity and shelves. */
+.shop-page .hero{display:grid;grid-template-columns:1.05fr 1fr;gap:65px;padding-block:40px 32px}
+.shop-page .hero-art{display:block;max-inline-size:370px;inline-size:100%;justify-self:center}
+.shop-page .shop-language{font-size:12px;font-weight:500;min-inline-size:44px;min-block-size:44px;padding:6px;border-color:transparent;background:transparent}
+.shop-page .footer-instagram{display:flex;align-items:center;justify-content:center;inline-size:44px;block-size:44px;margin:12px auto 0;border:1px solid var(--line);border-radius:50%;color:var(--text);text-decoration:none}
+.shop-page .footer-instagram:hover{color:#ad0707;border-color:#ad0707}
+.shop-page .footer-instagram:focus-visible,.shop-page .shop-language:focus-visible{outline:2px solid #ad0707;outline-offset:3px}
+@media(max-width:760px){.shop-page .hero{grid-template-columns:1fr;gap:22px;padding-block:26px}.shop-page .hero-art{max-inline-size:260px;inline-size:76%}.shop-page .shop-language{font-size:12px}}
+
+/* Compact header actions, desktop and mobile. Labels remain accessible. */
+.shop-page .topbar .shop-icon-button{inline-size:44px;block-size:44px;min-block-size:44px;padding:0;border-radius:50%;border:1px solid #e8e4e2;background:#fff;color:#344154;box-shadow:none;gap:0}
+.shop-page .topbar .shop-icon-button svg{inline-size:21px;block-size:21px}
+.shop-page .topbar .shop-icon-button .top-label{display:none}
+.shop-page .topbar .shop-icon-button:hover{border-color:#ad0707;background:#fff8f8;color:#ad0707}
+.shop-page .topbar .shop-icon-button:focus-visible{outline:2px solid #ad0707;outline-offset:3px}
+.shop-page .topbar .cart-count{background:#ad0707;color:white;border:2px solid white;min-inline-size:19px;block-size:19px;line-height:15px;font-size:10px;inset-inline-start:auto;inset-inline-end:-3px;inset-block-start:-4px}

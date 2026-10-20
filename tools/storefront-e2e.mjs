@@ -34,7 +34,7 @@ try{
    const blocked=[],errors=[];
    await context.route('**/*',route=>{
     const request=route.request(),url=new URL(request.url());
-    if(url.hostname==='gc.kis.v2.scr.kaspersky-labs.com')return route.abort();
+    if(['gc.kis.v2.scr.kaspersky-labs.com','me.kis.v2.scr.kaspersky-labs.com'].includes(url.hostname))return route.abort();
     // Optional web font is stubbed locally: no font service receives a request.
     if(url.origin==='https://fonts.googleapis.com'&&url.pathname==='/css2'&&request.method()==='GET')
       return route.fulfill({status:200,contentType:'text/css',body:'/* offline font fallback */'});
@@ -57,9 +57,9 @@ try{
     await page.goto(origin+'/shop.html?demo=1');
     await page.locator('.product-card').first().waitFor();
     if(scenario==='layout-navigation'){
-     const layout=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,header:document.querySelector('.topbar').getBoundingClientRect().height,card:document.querySelector('.product-card').getBoundingClientRect().top+scrollY}));
+     const layout=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,art:document.querySelector('.hero-art').getBoundingClientRect().height,header:document.querySelector('.topbar').getBoundingClientRect().height,card:document.querySelector('.product-card').getBoundingClientRect().top+scrollY}));
      assert.equal(layout.scroll,layout.width,'Document must not scroll horizontally');
-     if(viewport.width===375){assert.ok(layout.header<=60.5,JSON.stringify(layout));assert.ok(layout.card<=520,JSON.stringify(layout));}
+     if(viewport.width===375){assert.ok(layout.header<=60.5,JSON.stringify(layout));assert.ok(layout.art>=250 && layout.art<=310,JSON.stringify(layout));assert.ok(layout.card-layout.art<=520,JSON.stringify(layout));}
      assert.ok(await page.locator('#catalog').evaluate(e=>e.classList.contains('is-shelves')));
      await page.screenshot({path:path.join(out,name+'.png'),fullPage:true});
      await page.locator('#genus-chips button').filter({hasText:'Alocasia'}).click();

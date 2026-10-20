@@ -22,7 +22,7 @@ function fixture(){
  const data=new Map([['admins/owner',{active:true}],['tp2_products/p',{id:'p',code:'P',name:'Test',genus:'Hoya',publicDescription:'',revision:1,published:true,variants:[{id:'v',type:'كتنج',qty:2,reserved:0,cost:200,price:500,sell:true}]}]]);
  const snap=p=>({exists:data.has(p),data:()=>structuredClone(data.get(p))});
  const db={doc:p=>({path:p,get:async()=>snap(p)}),collection:c=>({get:async()=>({docs:[...data].filter(([k])=>k.startsWith(c+'/')).map(([k])=>snap(k))})}),runTransaction:async fn=>{const writes=[];const result=await fn({get:async r=>snap(r.path),set:(r,v)=>writes.push([r.path,structuredClone(v)])});for(const [k,v]of writes)data.set(k,v);return result;}};
- const auth={verifyIdToken:async t=>{if(!t)throw Error();return {uid:t,email_verified:true,email:t+'@example.test'};}};
+ const auth={verifyIdToken:async t=>{if(!t)throw Error();return {uid:t,firebase:{sign_in_second_factor:'totp'},email_verified:true,email:t+'@example.test'};}};
  const handler=adminHandler(async()=>({db,auth}));
  const call=async(action,args,user='owner')=>{const r=await handler({httpMethod:'POST',headers:{origin:'https://temoplants.com',authorization:'Bearer '+user},body:JSON.stringify({action,args})});return {status:r.statusCode,...JSON.parse(r.body)};};
  return {data,db,call};
@@ -77,3 +77,4 @@ test('extended backup and customer merge are denied to ordinary customers',async
  }
  assert.equal([...f.data.keys()].filter(k=>k.startsWith('notificationOutbox/')).length,0);
 });
+

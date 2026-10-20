@@ -42,7 +42,7 @@ export function createAdminMfa(sdk,auth){
     async status(){
       if(!auth.currentUser)throw new Error('سجّل الدخول أولاً.');
       const token=await auth.currentUser.getIdTokenResult();
-      return {enrolled:factors().length>0,verified:auth.currentUser.emailVerified,required:token.claims.admin_mfa_required===true,secondFactor:token.claims.firebase?.sign_in_second_factor==='totp'};
+      return {enrolled:factors().length>0,verified:auth.currentUser.emailVerified,required:true,secondFactor:token.claims.firebase?.sign_in_second_factor==='totp'};
     },
     async begin(password){
       cancel();const attempt=generation,current=auth.currentUser;

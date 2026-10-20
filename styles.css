@@ -83,3 +83,7 @@
 .admin-main .collection-nav{min-width:44px}
 @media(hover:none),(pointer:coarse){.admin-main .collection-shelf-controls{display:none}}
 @media(max-width:760px){.admin-main .collection-track>.collection-card{flex-basis:82%}.admin-main .collection-shelf-head h2{font-size:17px}}
+
+/* Invoice layout is independent of the horizontally scrollable admin tables. */
+.invoice{max-width:100%;box-sizing:border-box;direction:rtl}.invoice .table-wrap{overflow:visible;border:0;max-width:100%}.invoice table{width:100%;min-width:0!important;table-layout:fixed;border-collapse:collapse}.invoice th,.invoice td{white-space:normal!important;overflow-wrap:anywhere;padding:7px 4px;font-size:10px;text-align:right}.invoice th:first-child{width:29%}.invoice th:nth-child(2){width:7%}.invoice td .money{white-space:normal;font-size:10px}
+@media print{dialog[open],dialog .dialog-form,.invoice,.invoice .table-wrap{overflow:visible!important;max-height:none!important}.invoice table{min-width:0!important;width:100%!important}.invoice thead{display:table-header-group}.invoice .row{break-inside:avoid}.invoice .no-print{display:none!important}}

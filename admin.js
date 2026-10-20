@@ -1,3 +1,5 @@
+import {mergeEligibility,planMergeOrders} from './order-merge.js';
+import {createInvoicePdf,downloadInvoice} from './invoice-pdf.js';
 import {setupAdminAuth} from './admin-auth.js';
 import {originLabel,costReview,acquisitionSummary} from './origin-cost.js';
 import {exportExtendedBackup} from './backup-export.js';
@@ -13,7 +15,7 @@ import {inventoryEntries,variantState,variantStates,salePriceLabel} from './sale
 import {variantLabel} from './storefront-content.js';
 import {genusField,readGenus,genusKey,genusSearch,searchKey,genera} from './catalog-fields.js';
 import {customerPage} from './customers.js';
-import {phoneNumber,invoiceMessage} from './customer-domain.js';
+import {phoneNumber} from './customer-domain.js';
 import {newPlant,addProduction} from './plant-workflows.js';
 import * as D from './domain.js';
 import * as store from './store.js';
@@ -22,7 +24,7 @@ import {$,el,btn,field,select,check,dialog,setupDialog,notice,errorText,table,mo
 import {previewLegacy,importLegacy,restoreBackup} from './migration.js';
 const state=Object.fromEntries(store.collections.map(c=>[c,[]]));let activePlantId='',page='dashboard',started=false,search='',plantFilter='',plantOfferFilter='',from=D.localDate().slice(0,7)+'-01',to=D.localDate();
 const names={dashboard:'نظرة عامة',orders:'الطلبات',products:'نباتاتي',customers:'العملاء',quality:'مراجعة المنصة',purchases:'المشتريات والحركات',expenses:'المصاريف',supplies:'المستلزمات',reports:'التقارير',marketing:'مركز التسويق',assistant:'مساعد Temo',backup:'النسخ ونقل البيانات'};
-const statusNames={reserved:'محجوز',sold:'مباع',cancelled:'ملغي',returned:'مرتجع'};
+const statusNames={merged:'مدمج في طلب آخر',reserved:'محجوز',sold:'مباع',cancelled:'ملغي',returned:'مرتجع'};
 const fulfillmentNames={pending:'قيد التجهيز',shipped:'تم الشحن',delivered:'تم التسليم',issue:'مشكلة بالشحن'};
 const V=(form,name)=>form.get(name)?.toString().trim()||'';
 const cash=(form,name)=>D.money(V(form,name));
@@ -143,9 +145,18 @@ function renderOrders(){
  source.addEventListener('change',()=>{orderSourceFilter=source.querySelector('select').value;draw();});query.addEventListener('input',()=>{orderQuery=query.value;draw();});draw();
  return [head('الطلبات','طلبات الموقع وإنستجرام والحجوزات والمبيعات في مكان واحد. راجع الجديد ثم تابع الدفع والشحن.',[btn('+ طلب / بيع',()=>orderForm(),'button primary'),btn('تحديث الطلبات',()=>refreshWebOrders())]),webOrdersBusy?el('p',{role:'status'},'جارٍ تحميل طلبات الموقع…'):null,webOrdersError?el('p',{class:'form-error',role:'alert'},'تعذر تحميل طلبات الموقع: '+webOrdersError+' — اضغط تحديث الطلبات.'):null,summary,el('p',{class:'hint'},'الأخضر يعني الشحن والسداد؛ الوصول يظهر في عمود الشحن. مصادر الطلبات القديمة تعرض كما سُجلت سابقاً.'),el('div',{class:'filters order-filters'},source,query,all),count,result].filter(Boolean);
 }
+function mergeOrdersForm(target){
+ const candidates=state.orders.filter(o=>o.id!==target.id&&o.customerId&&o.customerId===target.customerId&&!o.mergedInto);
+ const picker=select('الطلب المراد ضمه إلى '+target.number,'merge-source',[['','— اختر الطلب —'],...candidates.map(o=>[o.id,o.number+' · '+(statusNames[o.status]||o.status)+' · '+D.formatMoney(o.total)])]);
+ const preview=el('div',{class:'stack',role:'status'});let selected=null;
+ const draw=()=>{selected=candidates.find(o=>o.id===picker.querySelector('select').value);preview.replaceChildren();if(!selected)return;try{const plan=planMergeOrders(target,selected,state.shipments.filter(s=>[target.id,selected.id].includes(s.orderId)));preview.append(el('p',{},'سيبقى الطلب '+target.number+'، ويؤرشف '+selected.number+' كطلب مدمج.'),table(['الإجمالي بعد الدمج','المستلم','المتبقي','رسوم الشحن المجمعة'],[[D.formatMoney(plan.target.total),D.formatMoney(plan.target.paid),D.formatMoney(plan.target.total-plan.target.paid),D.formatMoney(plan.target.shippingCharged)]]));}catch(e){preview.append(el('p',{class:'form-error'},e.message));}};
+ picker.querySelector('select').addEventListener('change',draw);
+ const op=D.id();dialog('دمج طلبين — '+target.customer,el('div',{class:'stack'},el('p',{},'لا يُخصم مخزون ولا تُسجل دفعة جديدة. تُجمع رسوم الشحن كما هي؛ راجعها قبل التأكيد. يحتفظ السجل بالطلبين وتواريخ المبيعات الأصلية.'),candidates.length?picker:el('p',{},'لا يوجد طلب آخر مرتبط بملف هذا العميل. اربط الطلبين بنفس العميل أولاً.'),preview),()=>{D.assert(selected,'اختر الطلب المراد ضمه.');planMergeOrders(target,selected,state.shipments.filter(s=>[target.id,selected.id].includes(s.orderId)));return api.mergeOrders({targetId:target.id,sourceId:selected.id,targetRevision:target.revision,sourceRevision:selected.revision},op);});
+}
 function appendItemsForm(o){const lines=el('div',{class:'stack'});let count=0;const add=()=>{if(count>=20)return;const i=count++;const row=el('div',{class:'form-grid line-item','data-line':i},searchablePlantSelect('النبتة والصنف','item-'+i,stockOptions()),field('الكمية الإضافية','qty-'+i,'number','1',{required:'',min:'1',step:'1'}),field('سعر القطعة (ر.س)','price-'+i,'number','',{required:'',min:'0',step:'.01'}));row.querySelector('select').addEventListener('change',e=>{const [pid,vid]=e.target.value.split('|');const old=o.items.find(x=>x.productId===pid&&x.variantId===vid);const v=state.products.find(p=>p.id===pid)?.variants.find(v=>v.id===vid);row.querySelector('[name=price-'+i+']').value=((old?.price??v?.price??0)/100).toFixed(2);});row.append(btn('إزالة البند',()=>row.remove(),'button subtle'));lines.append(row);};add();const op=D.id();dialog('إضافة بنود — '+o.number,el('div',{class:'stack'},el('strong',{},o.customer),el('p',{class:'hint'},'تُضاف للطلب نفسه. المبلغ المستلم ورسوم الشحن لا يتغيران. البنود تُحجز للحجز أو تُخصم للمبيعات، ولن تسجل دفعة جديدة.'),lines,btn('+ بند آخر',add)),f=>api.appendOrderItems(o,[...lines.querySelectorAll('[data-line]')].map(row=>{const i=row.dataset.line;return {...splitVariant(V(f,'item-'+i)),qty:D.quantity(V(f,'qty-'+i)),price:cash(f,'price-'+i)};}),op));}
 function orderDetails(o){const active=['reserved','sold'].includes(o.status);const content=el('div',{class:'stack'},el('p',{},o.customer+' · '+(o.destination||'لم تحدد الوجهة')),el('p',{},'الدفع: '+D.paymentState(o).status+' · الشحن: '+(fulfillmentNames[o.fulfillment]||'قيد التجهيز')),table(['الصنف','الكمية','السعر','الإجمالي'],o.items.map(i=>[i.name+' — '+i.type,i.qty,moneyNode(i.price),moneyNode(i.qty*i.price)])),el('p',{},'إجمالي العميل: '+D.formatMoney(o.total)+' · المستلم: '+D.formatMoney(o.paid)+' · المتبقي: '+D.formatMoney(o.total-o.paid)),o.status==='reserved'?el('p',{class:'tag warn'},o.expires?'حجز حتى '+o.expires+' — لا يُحرّر تلقائياً.':'حجز مفتوح — دون تاريخ انتهاء.'):null,el('div',{class:'actions'},btn('فاتورة',()=>invoice(o)),active?btn('خصم البنود قبل الفاتورة',()=>discountForm(o)):null));
- if(active){if(!['shipped','delivered'].includes(o.fulfillment))content.append(btn('إضافة بنود لنفس الطلب',()=>appendItemsForm(o)));if(o.pendingReceipt)content.append(btn('مراجعة إيصال العميل',()=>webOrderDetails(o),'button primary'));if(!o.pendingReceipt&&o.total>o.paid)content.append(btn('تسجيل تحويل مستلم',()=>actionForm(o,'payment'),'button primary'));content.append(btn('هل تم الشحن؟ / تحديث الشحن',()=>actionForm(o,'shipment')));}
+ if(o.status==='merged'){content.append(el('p',{},'دُمج في '+o.mergedIntoNumber),btn('فتح الطلب الموحّد',()=>{const target=state.orders.find(x=>x.id===o.mergedInto);if(target)orderDetails(target);}));}
+ if(active){if(o.fulfillment==='pending')content.append(btn('دمج مع طلب آخر',()=>mergeOrdersForm(o)));if(!['shipped','delivered'].includes(o.fulfillment))content.append(btn('إضافة بنود لنفس الطلب',()=>appendItemsForm(o)));if(o.pendingReceipt)content.append(btn('مراجعة إيصال العميل',()=>webOrderDetails(o),'button primary'));if(!o.pendingReceipt&&o.total>o.paid)content.append(btn('تسجيل تحويل مستلم',()=>actionForm(o,'payment'),'button primary'));content.append(btn('هل تم الشحن؟ / تحديث الشحن',()=>actionForm(o,'shipment')));}
  if(o.status==='reserved')content.append(btn('تأكيد البيع دون تحصيل',()=>actionForm(o,'fulfill')),btn('إلغاء وتحرير الحجز',()=>actionForm(o,'cancel'),'button danger'));
  if(o.status==='sold')content.append(btn('مرتجع كامل',()=>actionForm(o,'return'),'button danger'));dialog(o.number,content);
 }
@@ -190,7 +201,18 @@ setupAdminAuth({store,start});
 addEventListener('offline',()=>{$('sync').textContent='غير متصل — لا تؤكد عمليات مالية';});addEventListener('online',()=>{$('sync').textContent=store.demo?'وضع تجريبي':'اتصلت الشبكة';});
 try{await store.connect();store.watchAuth(async user=>{if(user){try{await start();}catch(e){$('login-error').textContent=errorText(e);}}else if(started){location.reload();}});if(!store.demo)$('sync').textContent='يلزم تسجيل الدخول';}catch(e){$('login-error').textContent=errorText(e);$('sync').textContent='بانتظار التفعيل';$('login-form').querySelector('button').disabled=true;}
 
-function invoiceWhatsApp(o){const customer=state.customers.find(c=>c.id===o.customerId),input=field('رقم واتساب المشتري','invoice-phone','tel',o.customerPhone||customer?.phone||''),link=el('a',{class:'button',target:'_blank',rel:'noopener noreferrer'},'فتح الفاتورة في واتساب'),error=el('p',{class:'hint',role:'status'});function update(){try{const phone=phoneNumber(input.querySelector('input').value);link.href='https://wa.me/'+phone+'?text='+encodeURIComponent(invoiceMessage(o,D.formatMoney));link.removeAttribute('aria-disabled');error.textContent='يفتح ملخص الفاتورة النصي للمراجعة والإرسال. لإرسال PDF احفظه ثم أرفقه في المحادثة.';}catch{link.removeAttribute('href');link.setAttribute('aria-disabled','true');error.textContent='أدخل رقم العميل مع رمز الدولة لفتح واتساب.';}}input.addEventListener('input',update);update();return el('div',{class:'no-print stack'},input,link,error);}
+function invoiceWhatsApp(o){
+ const customer=state.customers.find(c=>c.id===o.customerId),input=field('رقم واتساب المشتري','invoice-phone','tel',o.customerPhone||customer?.phone||''),link=el('a',{class:'button',target:'_blank',rel:'noopener noreferrer'},'فتح محادثة العميل'),message=el('p',{class:'hint',role:'status'},'جارٍ تجهيز ملف PDF…');
+ let file;
+ const save=btn('تنزيل PDF',()=>downloadInvoice(file),'button primary'),share=btn('مشاركة PDF عبر واتساب',async()=>{
+  if(navigator.canShare?.({files:[file]})){
+   try{await navigator.share({files:[file],title:'فاتورة '+o.number});message.textContent='تم تسليم الملف إلى قائمة المشاركة.';}catch(e){if(e.name==='AbortError'){message.textContent='أُلغيت المشاركة؛ الملف جاهز للتنزيل.';return;}downloadInvoice(file);message.textContent='تعذرت المشاركة المباشرة. تم تنزيل PDF؛ أرفقه في محادثة العميل.';}
+  }else{downloadInvoice(file);message.textContent='تم تنزيل PDF. افتح محادثة العميل وأرفق الملف من التنزيلات؛ هذا المتصفح لا يدعم مشاركة الملفات مباشرة.';}
+ });save.disabled=share.disabled=true;
+ createInvoicePdf(o).then(result=>{file=result;save.disabled=share.disabled=false;message.textContent='الملف جاهز. اختر واتساب ثم العميل من قائمة المشاركة. إذا لم يدعم جهازك المشاركة، نزّل الملف وأرفقه في المحادثة.';}).catch(()=>{message.textContent='تعذر تجهيز PDF. أغلق الفاتورة وافتحها مجدداً، أو استخدم الطباعة.';});
+ function update(){try{link.href='https://wa.me/'+phoneNumber(input.querySelector('input').value);link.removeAttribute('aria-disabled');}catch{link.removeAttribute('href');link.setAttribute('aria-disabled','true');}}
+ input.addEventListener('input',update);update();return el('div',{class:'no-print stack'},el('div',{class:'actions'},save,share),input,link,message);
+}
 
 function variantVisibility(p,v,hidden){dialog(hidden?'إخفاء الصنف الفارغ':'استعادة الصنف',el('div',{},el('p',{},p.name+' — '+v.type),el('p',{},hidden?'سيختفي هذا الصنف من البطاقة وقوائم الاختيار. يبقى سجل عملياته محفوظاً، ويمكن استعادته من «المزيد».':'سيعود الصنف إلى البطاقة، ويظل غير معروض للبيع حتى تفعّله.')),async()=>{await api.setVariantHidden(p,v.id,hidden);return hidden?'تم إخفاء الصنف الفارغ.':'تمت استعادة الصنف.';});}
 

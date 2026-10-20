@@ -1,3 +1,4 @@
+https://temoplants.netlify.app/* https://temoplants.com/:splat 301!
 /sitemap.xml /.netlify/functions/sitemap 200
 /plants/* /.netlify/functions/product-page 200!
 /shop.html /.netlify/functions/product-page 200!

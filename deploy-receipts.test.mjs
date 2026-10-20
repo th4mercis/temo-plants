@@ -8,7 +8,7 @@ const bytes=await sharp({create:{width:10,height:10,channels:3,background:'#fff'
 function fixture(){
  const docs=new Map(Object.entries({['admins/admin']:{active:true},['shopRequests/'+id]:{id,tokenHash:createHash('sha256').update(token).digest('hex'),status:'approved',number:'WEB-T',items:[]},['tp2_orders/'+id]:{id,number:'WEB-T',status:'sold',total:10000,paid:0,revision:1,items:[],fulfillment:'pending'}}));
  const snap=path=>({data:()=>structuredClone(docs.get(path)),exists:docs.has(path)});const db={doc:path=>({path,get:async()=>snap(path)}),runTransaction:async fn=>{const writes=[];const result=await fn({get:async ref=>snap(ref.path),set:(ref,data)=>writes.push([ref.path,structuredClone(data)])});writes.forEach(([k,v])=>docs.set(k,v));return result;}};
- const handler=createHandler(async()=>({db,auth:{verifyIdToken:async t=>{if(t!=='admin-token')throw Error();return {uid:'admin'};}}}));
+ const handler=createHandler(async()=>({db,auth:{verifyIdToken:async t=>{if(t!=='admin-token')throw Error();return {uid:'admin',firebase:{sign_in_second_factor:'totp'}};}}}));
  const call=async(body,admin=false)=>{const r=await handler({httpMethod:'POST',headers:{origin:'https://temoplants.netlify.app','x-nf-client-connection-ip':'192.0.2.1',...(admin?{authorization:'Bearer admin-token'}:{})},body:JSON.stringify(body)});return {code:r.statusCode,...JSON.parse(r.body)};};return {docs,call};
 }
 const submit={action:'receipt-submit',id,token,receiptId,amount:4000,image};

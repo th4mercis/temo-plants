@@ -1,3 +1,4 @@
+import {planMergeOrders} from './order-merge.js';
 import {effectivePurchase} from './purchase-cost.js';
 import {phoneNumber} from './customer-domain.js';
 import * as D from './domain.js';
@@ -128,6 +129,19 @@ async function setVariantHidden(product,variantId,hidden,op=D.id()){
   return {writes:{...productWrites([p]),['audit/'+op]:audit(op,hidden?'variant-hide':'variant-restore',{productId:p.id,variantId})},result:p.id};
  });
 }
+async function mergeOrders(input,op=D.id()){
+ const {targetId,sourceId,targetRevision,sourceRevision}=input;
+ D.assert(typeof targetId==='string'&&typeof sourceId==='string'&&targetId!==sourceId,'اختر طلبين مختلفين.');
+ return store.atomic(['orders/'+targetId,'orders/'+sourceId,'shipments/'+targetId,'shipments/'+sourceId,'audit/'+op],docs=>{
+  if(docs['audit/'+op]){D.assert(docs['audit/'+op].kind==='order-merge'&&docs['audit/'+op].details.targetId===targetId&&docs['audit/'+op].details.sourceId===sourceId,'معرف عملية مستخدم.');return {result:targetId};}
+  const a=docs['orders/'+targetId],b=docs['orders/'+sourceId];
+  D.assert(a&&b&&a.revision===targetRevision&&b.revision===sourceRevision,'تغير أحد الطلبين؛ افتح نافذة الدمج مجدداً.');
+  const plan=planMergeOrders(a,b,[docs['shipments/'+targetId],docs['shipments/'+sourceId]]);
+  const at=now();plan.source.mergedAt=at;
+  return {writes:{['orders/'+targetId]:plan.target,['orders/'+sourceId]:plan.source,['audit/'+op]:audit(op,'order-merge',{targetId,sourceId,targetBefore:a,sourceBefore:b})},result:targetId};
+ });
+}
+
 async function appendOrderItems(order,items,op=D.id()){
  items=D.normalizeItems(items);const paths=[...new Set(items.map(i=>'products/'+i.productId))];
  return store.atomic(['orders/'+order.id,'audit/'+op,...paths],docs=>{
@@ -237,5 +251,5 @@ async function mergeCustomers(input,op=D.id()){
  });
 }
 
-return {mergeCustomers,linkOrderCustomer,receivePlant,saveProduct,stockChange,createOrder,discountOrder,orderAction,expense,supply,setVariantHidden,appendOrderItems,correctPurchaseCost,correctOpeningCost,saveCustomer};
+return {mergeOrders,mergeCustomers,linkOrderCustomer,receivePlant,saveProduct,stockChange,createOrder,discountOrder,orderAction,expense,supply,setVariantHidden,appendOrderItems,correctPurchaseCost,correctOpeningCost,saveCustomer};
 }

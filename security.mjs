@@ -35,8 +35,8 @@ export async function consumeLimit(db, identity, action, limit = 60, now = Date.
   });
 }
 export function requireRecentAdmin(user) {
-  // Opt-in rollout only after MFA enrollment and recovery have been verified.
-  if ((process.env.REQUIRE_ADMIN_MFA === 'true' || user.admin_mfa_required === true) && user.firebase?.sign_in_second_factor !== 'totp') {
+  // Every administrator must authenticate with TOTP, including newly added accounts.
+  if (user.firebase?.sign_in_second_factor !== 'totp') {
     throw new PublicError('يلزم تسجيل الدخول بالمصادقة الثنائية لحساب المدير.', 403);
   }
 }
