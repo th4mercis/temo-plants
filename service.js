@@ -18,3 +18,5 @@ export const saveCustomer=(...args)=>store.demo?local.saveCustomer(...args):stor
 export const linkOrderCustomer=(...args)=>store.demo?local.linkOrderCustomer(...args):store.command('linkOrderCustomer',args);
 
 export const mergeCustomers=(...args)=>store.demo?local.mergeCustomers(...args):store.command('mergeCustomers',args);
+
+export const mergeOrders=(...args)=>store.demo?local.mergeOrders(...args):store.command('mergeOrders',args);

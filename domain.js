@@ -42,14 +42,14 @@ export function receiveStock(product,variantId,q,unitCost,landed=0){const p=stru
 export function paymentState(order){const due=order.total-order.paid;return {due,status:order.paid===0?'لم يُدفع':due===0?'مدفوع بالكامل':'دفع جزئي'};}
 // Display-only classification: never changes stock, payment or shipment records.
 export function orderStage(o,today=localDate()){
-  if(['cancelled','returned'].includes(o.status))return 'closed';
+  if(['cancelled','returned','merged'].includes(o.status))return 'closed';
   if(o.fulfillment==='issue')return 'attention';
   if(['shipped','delivered'].includes(o.fulfillment))return o.paid>=o.total&&!o.pendingReceipt?'complete':'unpaid';
   if(o.status==='reserved'&&o.expires&&o.expires<today)return 'attention';
   return 'preparing';
 }
 export function orderSource(o){const s=String(o.source||'').trim().toLowerCase();return ['instagram','إنستجرام','انستجرام'].includes(s)?'instagram':['المتجر','website'].includes(s)?'website':s==='whatsapp'?'whatsapp':s==='manual'?'manual':'other';}
-export function totals({orders=[],expenses=[],cash=[]},from,to){const within=x=>x.date>=from&&x.date<=to;const sales=orders.filter(o=>['sold','returned'].includes(o.status)&&within(o));const returns=orders.filter(o=>o.status==='returned'&&within({date:o.returnDate}));
+export function totals({orders=[],expenses=[],cash=[]},from,to){const within=x=>x.date>=from&&x.date<=to;const sales=orders.filter(o=>['sold','returned'].includes(o.status)).flatMap(o=>{const parts=o.mergeAccounting||[];return [...parts,{...o,total:o.total-parts.reduce((s,x)=>s+x.total,0),cogs:o.cogs-parts.reduce((s,x)=>s+x.cogs,0),shippingCost:o.shippingCost-parts.reduce((s,x)=>s+x.shippingCost,0)}];}).filter(within);const returns=orders.filter(o=>o.status==='returned'&&within({date:o.returnDate}));
   const revenue=sales.reduce((s,o)=>s+o.total,0)-returns.reduce((s,o)=>s+o.total,0);
   const cogs=sales.reduce((s,o)=>s+o.cogs,0)-returns.filter(o=>o.restock).reduce((s,o)=>s+o.cogs,0);
   const shipping=sales.reduce((s,o)=>s+o.shippingCost,0),operating=expenses.filter(within).reduce((s,e)=>s+e.amount,0);
